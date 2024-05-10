@@ -1,14 +1,27 @@
 import express, { Express, Request, Response, NextFunction } from "express";
 import { ExtendedError } from "./types/index.ts";
 import { ApiError, ApiResponse } from "./utils/responses/responses.ts";
+import session from "express-session";
+import authRouter from "./routes/auth.route.ts";
 
 const app: Express = express();
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
+// required for passport.js
+app.use(
+	session({
+		secret: process.env.SESSION_SECRET!,
+		saveUninitialized: false,
+		resave: false,
+	})
+);
+
+app.use("/api", authRouter);
+
 app.get("/", (req, res, next) => {
-   next(new ApiError(200, "Error"));
+	ApiResponse(res, 200, { message: "Hello" });
 });
 
 app.use(

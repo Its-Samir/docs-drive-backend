@@ -12,6 +12,7 @@ model User {
   name      String
   email     String   @unique
   password  String?
+  oauthId   String?  @unique
   image     String?
   items     Item[]
   createdAt DateTime @default(now())
