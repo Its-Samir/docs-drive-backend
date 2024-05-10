@@ -46,7 +46,7 @@ passport.use(
 				});
 
 				if (user) {
-					cb(null, user); // send the user to the req.user (configuration provided by passportjs) header for login
+					cb(null, user);
 				} else {
 					const newUser = await db.user.create({
 						data: {
