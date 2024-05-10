@@ -1,0 +1,41 @@
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  email     String   @unique
+  password  String?
+  image     String?
+  items     Item[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+model Item {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  previewUrl      String
+  media           String?
+  name            String
+  sharedWithUsers String[] @db.ObjectId
+  isFolder        Boolean  @default(false)
+  isPrivate       Boolean  @default(false)
+  isTrash         Boolean  @default(false)
+  parentId        String?  @db.ObjectId
+  ownerId         String   @db.ObjectId
+  owner           User     @relation(fields: [ownerId], references: [id])
+  parent          Item?    @relation(name: "items", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  childrens       Item[]   @relation(name: "items")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("items")
+}
