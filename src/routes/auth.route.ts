@@ -1,6 +1,6 @@
 import { Router } from "express";
 import passport from "passport";
-import { passportAuth } from "../controllers/auth.controller.ts";
+import { login, passportAuth, register } from "../controllers/auth.controller.ts";
 import "../utils/passport-auth.ts";
 
 const router = Router();
@@ -15,5 +15,8 @@ router.get(
 	passport.authenticate("google"),
 	passportAuth
 );
+
+router.post("/register", register);
+router.post("/login", login);
 
 export default router;
