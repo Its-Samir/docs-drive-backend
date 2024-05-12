@@ -3,13 +3,13 @@ import { ExtendedError } from "./types/index.ts";
 import { ApiError, ApiResponse } from "./utils/responses/responses.ts";
 import session from "express-session";
 import authRouter from "./routes/auth.route.ts";
+import cookieParser from "cookie-parser";
 
 const app: Express = express();
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
-
-// required for passport.js
+app.use(cookieParser());
 app.use(
 	session({
 		secret: process.env.SESSION_SECRET!,
