@@ -3,6 +3,7 @@ import { ExtendedError } from "./types/index.ts";
 import { ApiError, ApiResponse } from "./utils/responses/responses.ts";
 import session from "express-session";
 import authRouter from "./routes/auth.route.ts";
+import itemRouter from "./routes/items.route.ts";
 import cookieParser from "cookie-parser";
 
 const app: Express = express();
@@ -19,6 +20,7 @@ app.use(
 );
 
 app.use("/api", authRouter);
+app.use("/api", itemRouter);
 
 app.get("/", (req, res, next) => {
 	ApiResponse(res, 200, { message: "Hello" });

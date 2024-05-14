@@ -8,7 +8,7 @@ generator client {
 }
 
 model User {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  id        String   @id @default(cuid()) @map("_id")
   name      String
   email     String   @unique
   password  String?
@@ -22,16 +22,16 @@ model User {
 }
 
 model Item {
-  id              String   @id @default(auto()) @map("_id") @db.ObjectId
-  previewUrl      String
+  id              String   @id @default(cuid()) @map("_id")
+  previewUrl      String   @unique
   media           String?
-  name            String
-  sharedWithUsers String[] @db.ObjectId
+  name            String   @unique
+  sharedWithUsers String[]
   isFolder        Boolean  @default(false)
   isPrivate       Boolean  @default(false)
   isTrash         Boolean  @default(false)
-  parentId        String?  @db.ObjectId
-  ownerId         String   @db.ObjectId
+  parentId        String?
+  ownerId         String
   owner           User     @relation(fields: [ownerId], references: [id])
   parent          Item?    @relation(name: "items", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   childrens       Item[]   @relation(name: "items")
