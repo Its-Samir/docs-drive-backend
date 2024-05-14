@@ -22,7 +22,7 @@ export async function passportAuth(
 		});
 
 		if (!user) {
-			return next(new ApiError(404, "User not found"));
+			throw new ApiError(404, "User not found");
 		}
 
 		const token = jwt.sign(
@@ -37,7 +37,7 @@ export async function passportAuth(
 			.status(200)
 			.json({ token, user });
 	} catch (error) {
-		next(new ApiError(500, "Passport oauth failed: " + error));
+		next(error);
 	}
 }
 
@@ -50,7 +50,7 @@ export async function register(
 		const { name, email, password }: User = req.body;
 
 		if (!email || !name || !password) {
-			return next(new ApiError(400, "Required fields are missing"));
+			throw new ApiError(400, "Required fields are missing");
 		}
 
 		const invalidEmailInput =
@@ -59,7 +59,7 @@ export async function register(
 			email.split("@")[1].split(".")[1] === "";
 
 		if (invalidEmailInput) {
-			return next(new ApiError(400, "Invalid email input"));
+			throw new ApiError(400, "Invalid email input");
 		}
 
 		const existingUser = await db.user.findUnique({
@@ -68,18 +68,16 @@ export async function register(
 		});
 
 		if (existingUser) {
-			return next(
-				new ApiError(409, "An user already exists with the email")
-			);
+			throw new ApiError(409, "An user already exists with the email");
 		}
 
 		const hashedPassword = await bcrypt.hash(password, 12);
 
 		await db.user.create({ data: { email, name, password: hashedPassword } });
 
-		ApiResponse(res, 201, "User created successfully");
+		ApiResponse(res, 201, { message: "User created successfully" });
 	} catch (error) {
-		next(new ApiError(500, "User registration failed: " + error));
+		next(error);
 	}
 }
 
@@ -88,7 +86,7 @@ export async function login(req: Request, res: Response, next: NextFunction) {
 		const { email, password }: User = req.body;
 
 		if (!email || !password) {
-			return next(new ApiError(400, "Required fields are missing"));
+			throw new ApiError(400, "Required fields are missing");
 		}
 
 		const invalidEmailInput =
@@ -97,7 +95,7 @@ export async function login(req: Request, res: Response, next: NextFunction) {
 			email.split("@")[1].split(".")[1] === "";
 
 		if (invalidEmailInput) {
-			return next(new ApiError(400, "Invalid email input"));
+			throw new ApiError(400, "Invalid email input");
 		}
 
 		const existingUser = await db.user.findUnique({
@@ -112,7 +110,7 @@ export async function login(req: Request, res: Response, next: NextFunction) {
 		});
 
 		if (!existingUser) {
-			return next(new ApiError(404, "User not found"));
+			throw new ApiError(404, "User not found");
 		}
 
 		const isCorrectPassword = await bcrypt.compare(
@@ -121,7 +119,7 @@ export async function login(req: Request, res: Response, next: NextFunction) {
 		);
 
 		if (!isCorrectPassword) {
-			return next(new ApiError(403, "Invalid credentials"));
+			throw new ApiError(403, "Invalid credentials");
 		}
 
 		const token = jwt.sign(
@@ -144,6 +142,6 @@ export async function login(req: Request, res: Response, next: NextFunction) {
 				},
 			});
 	} catch (error) {
-		next(new ApiError(500, "Login failed: " + error));
+		next(error);
 	}
 }
