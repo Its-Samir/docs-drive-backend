@@ -7,6 +7,12 @@ generator client {
   provider = "prisma-client-js"
 }
 
+enum MediaType {
+  PDF
+  IMAGE
+  VIDEO
+}
+
 model User {
   id        String   @id @default(cuid()) @map("_id")
   name      String
@@ -22,21 +28,22 @@ model User {
 }
 
 model Item {
-  id              String   @id @default(cuid()) @map("_id")
-  previewUrl      String   @unique
+  id              String     @id @default(cuid()) @map("_id")
+  previewUrl      String     @unique
   media           String?
-  name            String   @unique
+  name            String     @unique
+  mediaType       MediaType?
   sharedWithUsers String[]
-  isFolder        Boolean  @default(false)
-  isPrivate       Boolean  @default(false)
-  isTrash         Boolean  @default(false)
+  isFolder        Boolean    @default(false)
+  isPrivate       Boolean    @default(false)
+  isTrash         Boolean    @default(false)
   parentId        String?
   ownerId         String
-  owner           User     @relation(fields: [ownerId], references: [id])
-  parent          Item?    @relation(name: "items", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  childrens       Item[]   @relation(name: "items")
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  owner           User       @relation(fields: [ownerId], references: [id])
+  parent          Item?      @relation(name: "items", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  childrens       Item[]     @relation(name: "items")
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
 
   @@map("items")
 }
