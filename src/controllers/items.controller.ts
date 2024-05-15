@@ -18,7 +18,7 @@ export async function createFile(
 
 		const folderId = params[params.length - 1];
 
-		const { name, media }: Item = req.body;
+		const { name, media, isPrivate }: Item = req.body;
 
 		if (!name || !media) {
 			throw new ApiError(400, "Required fields are missing");
@@ -31,6 +31,7 @@ export async function createFile(
 					ownerId: req.userId,
 					isFolder: true,
 					isTrash: false,
+					isPrivate,
 				},
 				select: {
 					id: true,
@@ -153,7 +154,7 @@ export async function createFolder(
 
 		const folderId = params[params.length - 1];
 
-		const { name }: Item = req.body;
+		const { name, isPrivate }: Item = req.body;
 
 		if (!name) {
 			throw new ApiError(400, "Required fields are missing");
@@ -166,6 +167,7 @@ export async function createFolder(
 					ownerId: req.userId,
 					isFolder: true,
 					isTrash: false,
+					isPrivate,
 				},
 				select: {
 					id: true,
@@ -252,6 +254,26 @@ export async function getItemsByType(
 	}
 }
 
+export async function getSharedItems(
+	req: Request,
+	res: Response,
+	next: NextFunction
+) {
+	try {
+		if (!req.userId) {
+			throw new ApiError(401, "Unauthorized");
+		}
+
+		const items = await db.item.findMany({
+			where: { sharedWithUsers: { has: req.userId }, isPrivate: true },
+		});
+
+		ApiResponse(res, 200, { items });
+	} catch (error) {
+		next(error);
+	}
+}
+
 export async function shareItem(
 	req: Request,
 	res: Response,
@@ -275,7 +297,12 @@ export async function shareItem(
 		}
 
 		const item = await db.item.findUnique({
-			where: { id: itemId, isTrash: false, ownerId: req.userId },
+			where: {
+				id: itemId,
+				isTrash: false,
+				ownerId: req.userId,
+				isPrivate: true,
+			},
 			select: {
 				id: true,
 				sharedWithUsers: true,
@@ -341,6 +368,52 @@ export async function makeTrash(
 		});
 
 		ApiResponse(res, 200, { message: "File sent to trash" });
+	} catch (error) {
+		next(error);
+	}
+}
+
+export async function restoreItem(
+	req: Request,
+	res: Response,
+	next: NextFunction
+) {
+	try {
+		if (!req.userId) {
+			throw new ApiError(401, "Unauthorized");
+		}
+
+		const itemId = req.params.itemId;
+
+		if (!itemId) {
+			throw new ApiError(400, "Required query is missing");
+		}
+
+		const item = await db.item.findUnique({
+			where: { id: itemId, isTrash: true, ownerId: req.userId },
+		});
+
+		if (!item) {
+			throw new ApiError(404, "Item not found");
+		}
+
+		await db.item.update({
+			where: {
+				id: item.id,
+			},
+			data: {
+				isTrash: false,
+			},
+		});
+
+		await db.item.updateMany({
+			where: { parentId: item.id, isTrash: true },
+			data: {
+				isTrash: false,
+			},
+		});
+
+		ApiResponse(res, 200, { message: "Items restored" });
 	} catch (error) {
 		next(error);
 	}

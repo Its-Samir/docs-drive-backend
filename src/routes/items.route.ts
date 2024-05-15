@@ -6,7 +6,9 @@ import {
 	deleteItem,
 	getItems,
 	getItemsByType,
+	getSharedItems,
 	makeTrash,
+	restoreItem,
 	shareItem,
 } from "../controllers/items.controller.ts";
 
@@ -14,12 +16,14 @@ const router = Router();
 
 router.use(verifyJWT);
 
-router.get("/items/*", getItems);
-router.get("/files", getItemsByType);
-router.post("/files/*", createFile);
-router.post("/folders/*", createFolder);
-router.put("/items/:itemId", shareItem);
-router.patch("/items/:itemId", makeTrash);
+router.get("/items/files-folders/*", getItems);
+router.get("/items/files", getItemsByType);
+router.get("/items/shared", getSharedItems);
+router.post("/items/files/*", createFile);
+router.post("/items/folders/*", createFolder);
+router.put("/items/:itemId/share", shareItem);
+router.put("/items/:itemId/trash", makeTrash);
+router.put("/items/:itemId/restore", restoreItem);
 router.delete("/items/:itemId", deleteItem);
 
 export default router;
