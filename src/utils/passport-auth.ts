@@ -41,7 +41,7 @@ passport.use(
 		},
 		async (_, __, profile, cb) => {
 			try {
-				const user = await db.user.findUnique({
+				const user = await db.user.findFirst({
 					where: { oauthId: profile.id },
 				});
 

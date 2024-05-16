@@ -17,8 +17,8 @@ model User {
   id        String   @id @default(cuid()) @map("_id")
   name      String
   email     String   @unique
-  password  String?
-  oauthId   String?  @unique
+  password  String? // optional because of oauth, though we can still make it mandatory and set some unique value to the password field during oauth user creation, but here am going with optional field.
+  oauthId   String?
   image     String?
   items     Item[]
   createdAt DateTime @default(now())

@@ -8,6 +8,7 @@ import {
 	getItemsByType,
 	getSharedItems,
 	makeTrash,
+	removePermission,
 	restoreItem,
 	shareItem,
 } from "../controllers/items.controller.ts";
@@ -22,6 +23,7 @@ router.get("/items/shared", getSharedItems);
 router.post("/items/files/*", createFile);
 router.post("/items/folders/*", createFolder);
 router.put("/items/:itemId/share", shareItem);
+router.put("/items/:itemId/permission", removePermission);
 router.put("/items/:itemId/trash", makeTrash);
 router.put("/items/:itemId/restore", restoreItem);
 router.delete("/items/:itemId", deleteItem);

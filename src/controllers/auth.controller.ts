@@ -4,6 +4,7 @@ import { ApiError, ApiResponse } from "../utils/responses/responses.ts";
 import jwt from "jsonwebtoken";
 import { User } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 
 export async function passportAuth(
 	req: Request,
@@ -73,7 +74,14 @@ export async function register(
 
 		const hashedPassword = await bcrypt.hash(password, 12);
 
-		await db.user.create({ data: { email, name, password: hashedPassword } });
+		await db.user.create({
+			data: {
+				email,
+				name,
+				password: hashedPassword,
+				oauthId: crypto.randomBytes(6).toString("hex"),
+			},
+		});
 
 		ApiResponse(res, 201, { message: "User created successfully" });
 	} catch (error) {

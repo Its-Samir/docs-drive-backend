@@ -31,7 +31,6 @@ export async function createFile(
 					ownerId: req.userId,
 					isFolder: true,
 					isTrash: false,
-					isPrivate,
 				},
 				select: {
 					id: true,
@@ -51,6 +50,7 @@ export async function createFile(
 					previewUrl,
 					owner: { connect: { id: req.userId } },
 					parent: { connect: { id: existingFolder.id } },
+					isPrivate: isPrivate ? isPrivate : false,
 				},
 			});
 
@@ -65,6 +65,7 @@ export async function createFile(
 				media,
 				previewUrl,
 				owner: { connect: { id: req.userId } },
+				isPrivate: isPrivate ? isPrivate : false,
 			},
 		});
 
@@ -167,7 +168,6 @@ export async function createFolder(
 					ownerId: req.userId,
 					isFolder: true,
 					isTrash: false,
-					isPrivate,
 				},
 				select: {
 					id: true,
@@ -180,13 +180,14 @@ export async function createFolder(
 
 			const previewUrl = crypto.randomBytes(12).toString("hex");
 
-			const folder = await db.item.create({
+			await db.item.create({
 				data: {
 					name,
 					previewUrl,
 					isFolder: true,
 					owner: { connect: { id: req.userId } },
 					parent: { connect: { id: existingFolder.id } },
+					isPrivate: isPrivate ? isPrivate : false,
 				},
 			});
 
@@ -201,6 +202,7 @@ export async function createFolder(
 				previewUrl,
 				isFolder: true,
 				owner: { connect: { id: req.userId } },
+				isPrivate: isPrivate ? isPrivate : false,
 			},
 		});
 
@@ -230,7 +232,7 @@ export async function getItemsByType(
 		const { type } = req.query;
 
 		if (!type || typeof type !== "string") {
-			throw new ApiError(400, "Required field is missing");
+			throw new ApiError(400, "Media type is missing");
 		}
 
 		const items = await db.item.findMany({
@@ -266,6 +268,15 @@ export async function getSharedItems(
 
 		const items = await db.item.findMany({
 			where: { sharedWithUsers: { has: req.userId }, isPrivate: true },
+			include: {
+				owner: {
+					select: {
+						email: true,
+						name: true,
+						image: true,
+					},
+				},
+			},
 		});
 
 		ApiResponse(res, 200, { items });
@@ -293,7 +304,7 @@ export async function shareItem(
 		const itemId = req.params.itemId;
 
 		if (!itemId) {
-			throw new ApiError(400, "Required query is missing");
+			throw new ApiError(400, "ItemId is missing");
 		}
 
 		const item = await db.item.findUnique({
@@ -326,6 +337,65 @@ export async function shareItem(
 	}
 }
 
+export async function removePermission(
+	req: Request,
+	res: Response,
+	next: NextFunction
+) {
+	try {
+		if (!req.userId) {
+			throw new ApiError(401, "Unauthorized");
+		}
+
+		const { userIds }: { userIds: string[] } = req.body;
+
+		if (!userIds || userIds.length === 0) {
+			throw new ApiError(400, "Required field is missing");
+		}
+
+		const itemId = req.params.itemId;
+
+		if (!itemId) {
+			throw new ApiError(400, "ItemId is missing");
+		}
+
+		const item = await db.item.findUnique({
+			where: {
+				id: itemId,
+				isTrash: false,
+				ownerId: req.userId,
+				isPrivate: true,
+				sharedWithUsers: { hasSome: userIds },
+			},
+			select: {
+				id: true,
+				sharedWithUsers: true,
+			},
+		});
+
+		if (!item) {
+			throw new ApiError(404, "Item not found");
+		}
+
+		let filteredIds = [...item.sharedWithUsers];
+
+		userIds.forEach((id) => {
+			filteredIds = filteredIds.filter((uId) => uId !== id);
+		});
+
+		await db.item.update({
+			where: { id: item.id },
+			data: {
+				sharedWithUsers: { set: [...filteredIds] },
+			},
+		});
+
+		ApiResponse(res, 200, { message: "Item permission removed" });
+	} catch (error) {
+		next(error);
+	}
+}
+
 export async function makeTrash(
 	req: Request,
 	res: Response,
@@ -339,7 +409,7 @@ export async function makeTrash(
 		const itemId = req.params.itemId;
 
 		if (!itemId) {
-			throw new ApiError(400, "Required query is missing");
+			throw new ApiError(400, "ItemId is missing");
 		}
 
 		const item = await db.item.findUnique({
@@ -386,7 +456,7 @@ export async function restoreItem(
 		const itemId = req.params.itemId;
 
 		if (!itemId) {
-			throw new ApiError(400, "Required query is missing");
+			throw new ApiError(400, "ItemId is missing");
 		}
 
 		const item = await db.item.findUnique({
@@ -432,7 +502,7 @@ export async function deleteItem(
 		const itemId = req.params.itemId;
 
 		if (!itemId) {
-			throw new ApiError(400, "Required query is missing");
+			throw new ApiError(400, "ItemId is missing");
 		}
 
 		const item = await db.item.findUnique({
