@@ -4,7 +4,6 @@ import { ApiError, ApiResponse } from "../utils/responses/responses.ts";
 import jwt from "jsonwebtoken";
 import { User } from "@prisma/client";
 import bcrypt from "bcryptjs";
-import crypto from "crypto";
 
 export async function passportAuth(
 	req: Request,
@@ -79,7 +78,6 @@ export async function register(
 				email,
 				name,
 				password: hashedPassword,
-				oauthId: crypto.randomBytes(6).toString("hex"),
 			},
 		});
 

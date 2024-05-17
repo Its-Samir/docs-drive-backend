@@ -34,6 +34,7 @@ model Item {
   name            String     @unique
   mediaType       MediaType?
   sharedWithUsers String[]
+  starredByUsers  String[]
   isFolder        Boolean    @default(false)
   isPrivate       Boolean    @default(false)
   isTrash         Boolean    @default(false)

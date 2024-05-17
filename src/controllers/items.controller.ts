@@ -219,7 +219,7 @@ export async function createFolder(
 	}
 }
 
-export async function getItemsByType(
+export async function getItemsByQuery(
 	req: Request,
 	res: Response,
 	next: NextFunction
@@ -229,26 +229,62 @@ export async function getItemsByType(
 			throw new ApiError(401, "Unauthorized");
 		}
 
-		const { type } = req.query;
+		let items: any = [];
 
-		if (!type || typeof type !== "string") {
-			throw new ApiError(400, "Media type is missing");
+		const { type, mediaType, starred, shared, trash } = req.query;
+
+		if (
+			type &&
+			type === "true" &&
+			mediaType &&
+			typeof mediaType === "string"
+		) {
+			items = await db.item.findMany({
+				where: {
+					ownerId: req.userId,
+					mediaType:
+						mediaType === "PDF"
+							? MediaType.PDF
+							: mediaType === "IMAGE"
+							? MediaType.IMAGE
+							: mediaType === "VIDEO"
+							? MediaType.VIDEO
+							: null,
+					isFolder: false,
+					isTrash: false,
+				},
+			});
 		}
 
-		const items = await db.item.findMany({
-			where: {
-				mediaType:
-					type === "PDF"
-						? MediaType.PDF
-						: type === "IMAGE"
-						? MediaType.IMAGE
-						: type === "VIDEO"
-						? MediaType.VIDEO
-						: null,
-				ownerId: req.userId,
-				isTrash: false,
-			},
-		});
+		if (starred && starred === "true") {
+			items = await db.item.findMany({
+				where: {
+					ownerId: req.userId,
+					starredByUsers: { has: req.userId },
+					isFolder: false,
+					isTrash: false,
+				},
+			});
+		}
+
+		if (shared && shared === "true") {
+			items = await db.item.findMany({
+				where: {
+					sharedWithUsers: { has: req.userId },
+					isPrivate: true,
+					isTrash: true,
+				},
+			});
+		}
+
+		if (trash && trash === "true") {
+			items = await db.item.findMany({
+				where: {
+					ownerId: req.userId,
+					isTrash: true,
+				},
+			});
+		}
 
 		ApiResponse(res, 200, { items });
 	} catch (error) {

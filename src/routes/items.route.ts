@@ -5,7 +5,7 @@ import {
 	createFolder,
 	deleteItem,
 	getItems,
-	getItemsByType,
+	getItemsByQuery,
 	getSharedItems,
 	makeTrash,
 	removePermission,
@@ -18,7 +18,7 @@ const router = Router();
 router.use(verifyJWT);
 
 router.get("/items/files-folders/*", getItems);
-router.get("/items/files", getItemsByType);
+router.get("/items/files", getItemsByQuery);
 router.get("/items/shared", getSharedItems);
 router.post("/items/files/*", createFile);
 router.post("/items/folders/*", createFolder);
