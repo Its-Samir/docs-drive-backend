@@ -231,7 +231,7 @@ export async function getItemsByQuery(
 
 		let items: any = [];
 
-		const { type, mediaType, starred, shared, trash } = req.query;
+		const { type, mediaType, starred, shared, trashed } = req.query;
 
 		if (
 			type &&
@@ -253,6 +253,15 @@ export async function getItemsByQuery(
 					isFolder: false,
 					isTrash: false,
 				},
+				include: {
+					owner: {
+						select: {
+							email: true,
+							name: true,
+							image: true,
+						},
+					},
+				},
 			});
 		}
 
@@ -264,6 +273,15 @@ export async function getItemsByQuery(
 					isFolder: false,
 					isTrash: false,
 				},
+				include: {
+					owner: {
+						select: {
+							email: true,
+							name: true,
+							image: true,
+						},
+					},
+				},
 			});
 		}
 
@@ -274,10 +292,19 @@ export async function getItemsByQuery(
 					isPrivate: true,
 					isTrash: true,
 				},
+				include: {
+					owner: {
+						select: {
+							email: true,
+							name: true,
+							image: true,
+						},
+					},
+				},
 			});
 		}
 
-		if (trash && trash === "true") {
+		if (trashed && trashed === "true") {
 			items = await db.item.findMany({
 				where: {
 					ownerId: req.userId,
@@ -285,35 +312,6 @@ export async function getItemsByQuery(
 				},
 			});
 		}
-
-		ApiResponse(res, 200, { items });
-	} catch (error) {
-		next(error);
-	}
-}
-
-export async function getSharedItems(
-	req: Request,
-	res: Response,
-	next: NextFunction
-) {
-	try {
-		if (!req.userId) {
-			throw new ApiError(401, "Unauthorized");
-		}
-
-		const items = await db.item.findMany({
-			where: { sharedWithUsers: { has: req.userId }, isPrivate: true },
-			include: {
-				owner: {
-					select: {
-						email: true,
-						name: true,
-						image: true,
-					},
-				},
-			},
-		});
 
 		ApiResponse(res, 200, { items });
 	} catch (error) {
