@@ -319,6 +319,66 @@ export async function getItemsByQuery(
 	}
 }
 
+export async function manageStarredItems(
+	req: Request,
+	res: Response,
+	next: NextFunction
+) {
+	try {
+		if (!req.userId) {
+			throw new ApiError(401, "Unauthorized");
+		}
+
+		const { itemId } = req.params;
+
+		if (!itemId) {
+			throw new ApiError(400, "ItemId is missing");
+		}
+
+		const item = await db.item.findUnique({
+			where: {
+				id: itemId,
+			},
+			select: {
+				id: true,
+				starredByUsers: true,
+			},
+		});
+
+		if (!item) {
+			throw new ApiError(404, "Item not found");
+		}
+
+		if (!item.starredByUsers.includes(req.userId)) {
+			await db.item.update({
+				where: {
+					id: itemId,
+				},
+				data: {
+					starredByUsers: { push: req.userId },
+				},
+			});
+
+			return ApiResponse(res, 200, "File Starred");
+		}
+
+		await db.item.update({
+			where: {
+				id: itemId,
+			},
+			data: {
+				starredByUsers: {
+					set: item.starredByUsers.filter((id) => id !== req.userId),
+				},
+			},
+		});
+
+		ApiResponse(res, 200, "File Unstarred");
+	} catch (error) {
+		next(error);
+	}
+}
+
 export async function shareItem(
 	req: Request,
 	res: Response,

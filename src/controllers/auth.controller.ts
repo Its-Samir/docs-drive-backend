@@ -151,3 +151,15 @@ export async function login(req: Request, res: Response, next: NextFunction) {
 		next(error);
 	}
 }
+
+export async function logout(req: Request, res: Response, next: NextFunction) {
+	try {
+		if (!req.userId) {
+			throw new ApiError(401, "Unauthorized");
+		}
+
+		res.cookie("token", "").status(200).json({ message: "User logged out" });
+	} catch (error) {
+		next(error);
+	}
+}

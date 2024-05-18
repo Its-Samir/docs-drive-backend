@@ -7,6 +7,7 @@ import {
 	getItems,
 	getItemsByQuery,
 	makeTrash,
+	manageStarredItems,
 	removePermission,
 	restoreItem,
 	shareItem,
@@ -18,6 +19,7 @@ router.use(verifyJWT);
 
 router.get("/items", getItemsByQuery);
 router.get("/items/files-folders/*", getItems);
+router.put("/items/:itemId/files", manageStarredItems);
 router.post("/items/files/*", createFile);
 router.post("/items/folders/*", createFolder);
 router.put("/items/:itemId/share", shareItem);

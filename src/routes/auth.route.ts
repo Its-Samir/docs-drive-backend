@@ -1,6 +1,11 @@
 import { Router } from "express";
 import passport from "passport";
-import { login, passportAuth, register } from "../controllers/auth.controller.ts";
+import {
+	login,
+	logout,
+	passportAuth,
+	register,
+} from "../controllers/auth.controller.ts";
 import "../utils/passport-auth.ts";
 
 const router = Router();
@@ -18,5 +23,6 @@ router.get(
 
 router.post("/register", register);
 router.post("/login", login);
+router.post("/logout", logout);
 
 export default router;
