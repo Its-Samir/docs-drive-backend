@@ -11,40 +11,52 @@ enum MediaType {
   PDF
   IMAGE
   VIDEO
+  OFFICE
+  UNKNOWN
 }
 
 model User {
-  id        String   @id @default(cuid()) @map("_id")
-  name      String
-  email     String   @unique
-  password  String? // optional because of oauth, though we can still make it mandatory and set some unique value to the password field during oauth user creation, but here am going with optional field.
-  oauthId   String?
-  image     String?
-  items     Item[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         String       @id @default(cuid()) @map("_id")
+  name       String
+  email      String       @unique
+  password   String? // optional because of oauth, though we can still make it mandatory and set some unique value to the password field during oauth user creation, but here am going with optional field.
+  oauthId    String?
+  image      String?
+  items      Item[]
+  sharedItem SharedItem[]
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
 
   @@map("users")
 }
 
 model Item {
-  id              String     @id @default(cuid()) @map("_id")
-  previewUrl      String     @unique
-  media           String?
-  name            String     @unique
-  mediaType       MediaType?
-  sharedWithUsers String[]
-  starredByUsers  String[]
-  isFolder        Boolean    @default(false)
-  isPrivate       Boolean    @default(false)
-  isTrash         Boolean    @default(false)
-  parentId        String?
-  ownerId         String
-  owner           User       @relation(fields: [ownerId], references: [id])
-  parent          Item?      @relation(name: "items", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  childrens       Item[]     @relation(name: "items")
-  createdAt       DateTime   @default(now())
-  updatedAt       DateTime   @updatedAt
+  id         String       @id @default(cuid()) @map("_id")
+  previewUrl String       @unique
+  media      String?
+  name       String       @unique
+  mediaType  MediaType?
+  isStarred  Boolean      @default(false)
+  isFolder   Boolean      @default(false)
+  isPrivate  Boolean      @default(false)
+  isTrash    Boolean      @default(false)
+  parentId   String?
+  ownerId    String
+  owner      User         @relation(fields: [ownerId], references: [id])
+  parent     Item?        @relation(name: "items", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  childrens  Item[]       @relation(name: "items")
+  sharedWith SharedItem[]
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
 
   @@map("items")
+}
+
+model SharedItem {
+  id      String @id @default(cuid()) @map("_id")
+  ownerId String
+  userId  String
+  itemId  String
+  user    User   @relation(fields: [userId], references: [id])
+  item    Item   @relation(fields: [itemId], references: [id])
 }

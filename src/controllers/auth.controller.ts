@@ -35,7 +35,7 @@ export async function passportAuth(
 
 		res.cookie("token", token, { httpOnly: true, maxAge: 3600000 })
 			.status(200)
-			.json({ token, user });
+			.json({ token, user, loginTime: new Date() });
 	} catch (error) {
 		next(error);
 	}
@@ -136,7 +136,11 @@ export async function login(req: Request, res: Response, next: NextFunction) {
 			{ expiresIn: "1h" }
 		);
 
-		res.cookie("token", token, { httpOnly: true, maxAge: 3600000 })
+		res.cookie("token", token, {
+			httpOnly: true,
+			maxAge: 3600000,
+			secure: process.env.NODE_ENV === "production",
+		})
 			.status(200)
 			.json({
 				token,
@@ -146,6 +150,7 @@ export async function login(req: Request, res: Response, next: NextFunction) {
 					name: existingUser.name,
 					image: existingUser.image,
 				},
+				loginTime: new Date(),
 			});
 	} catch (error) {
 		next(error);
@@ -159,6 +164,31 @@ export async function logout(req: Request, res: Response, next: NextFunction) {
 		}
 
 		res.cookie("token", "").status(200).json({ message: "User logged out" });
+	} catch (error) {
+		next(error);
+	}
+}
+
+export async function getUser(req: Request, res: Response, next: NextFunction) {
+	try {
+		if (!req.userId) {
+			throw new ApiError(401, "Unauthorized");
+		}
+
+		const email = req.query.email;
+
+		if (!email || typeof email !== "string") {
+			throw new ApiError(400, "Invalid query");
+		}
+
+		const users = await db.user.findMany({
+			where: { OR: [{ email }, { email: { contains: email } }] },
+			select: { id: true, email: true, name: true, image: true },
+		});
+
+		if (!users.length) return new ApiError(404, "User not found");
+
+		ApiResponse(res, 200, { users });
 	} catch (error) {
 		next(error);
 	}
