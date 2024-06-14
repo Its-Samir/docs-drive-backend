@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { ApiError, ApiResponse } from "../utils/responses/responses.ts";
+import { ApiError, ApiResponse } from "../utils/responses.ts";
 import { db } from "../utils/db.ts";
 import { Item, MediaType } from "@prisma/client";
 import crypto from "crypto";
@@ -18,9 +18,9 @@ export async function createFile(
 
 		const folderId = params[params.length - 1];
 
-		const { name, media, isPrivate, mediaType }: Item = req.body;
+		const { name, media, isPrivate, mediaType, size }: Item = req.body;
 
-		if (!name || !media || !mediaType) {
+		if (!name || !media || !mediaType || !size) {
 			throw new ApiError(400, "Required fields are missing");
 		}
 
@@ -34,6 +34,11 @@ export async function createFile(
 				},
 				select: {
 					id: true,
+					size: true,
+					isPrivate: true,
+					parent: {
+						select: { id: true, childrens: true, parent: true },
+					},
 				},
 			});
 
@@ -41,28 +46,61 @@ export async function createFile(
 				throw new ApiError(404, "Folder not found");
 			}
 
+			const updatedSize = existingFolder.size + size;
 			const previewUrl = crypto.randomBytes(12).toString("hex");
 
-			await db.item.create({
-				data: {
-					name,
-					media,
-					mediaType:
-						mediaType === "PDF"
-							? MediaType.PDF
-							: mediaType === "IMAGE"
-							? MediaType.IMAGE
-							: mediaType === "VIDEO"
-							? MediaType.VIDEO
-							: mediaType === "OFFICE"
-							? MediaType.OFFICE
-							: MediaType.UNKNOWN,
-					previewUrl,
-					owner: { connect: { id: req.userId } },
-					parent: { connect: { id: existingFolder.id } },
-					isPrivate: isPrivate ? isPrivate : false,
-				},
-			});
+			await db.$transaction([
+				db.item.create({
+					data: {
+						name,
+						media,
+						mediaType:
+							mediaType === "PDF"
+								? MediaType.PDF
+								: mediaType === "IMAGE"
+								? MediaType.IMAGE
+								: mediaType === "VIDEO"
+								? MediaType.VIDEO
+								: mediaType === "OFFICE"
+								? MediaType.OFFICE
+								: MediaType.UNKNOWN,
+						previewUrl,
+						size,
+						owner: { connect: { id: req.userId } },
+						parent: { connect: { id: existingFolder.id } },
+						isPrivate: isPrivate ? isPrivate : existingFolder.isPrivate,
+					},
+				}),
+
+				db.item.update({
+					where: { id: existingFolder.id },
+					data: {
+						size: updatedSize,
+					},
+				}),
+			]);
+
+			let currentParent: typeof existingFolder.parent =
+				existingFolder.parent;
+
+			while (currentParent) {
+				const updatedSize =
+					currentParent.childrens
+						.map((i) => i.size)
+						.reduce((a, c) => a + c) + size; // adding this size because in prisma transaction the updated size of the existing folder wouldn't affect immediately
+
+				await db.item.update({
+					where: {
+						id: currentParent.id,
+					},
+					data: {
+						size: updatedSize,
+					},
+				});
+
+				currentParent =
+					currentParent.parent as typeof existingFolder.parent;
+			}
 
 			return ApiResponse(res, 201, { message: "File created" });
 		}
@@ -84,6 +122,7 @@ export async function createFile(
 						? MediaType.OFFICE
 						: MediaType.UNKNOWN,
 				previewUrl,
+				size,
 				owner: { connect: { id: req.userId } },
 				isPrivate: isPrivate ? isPrivate : false,
 			},
@@ -102,7 +141,7 @@ export async function createFile(
 	}
 }
 
-export async function getFileInfo(
+export async function getItemInfo(
 	req: Request,
 	res: Response,
 	next: NextFunction
@@ -112,23 +151,28 @@ export async function getFileInfo(
 			throw new ApiError(401, "Unauthorized");
 		}
 
-		const fileId = req.params.fileId;
+		const itemId = req.params.itemId;
 
-		if (!fileId) {
+		if (!itemId) {
 			throw new ApiError(400, "ItemId is missing");
 		}
 
 		const item = await db.item.findFirst({
 			where: {
-				id: fileId,
+				id: itemId,
 				ownerId: req.userId,
 				isTrash: false,
-				isFolder: false,
 			},
 			include: {
 				sharedWith: {
 					include: {
-						user: true,
+						user: {
+							select: {
+								email: true,
+								name: true,
+								image: true,
+							},
+						},
 					},
 				},
 			},
@@ -223,6 +267,63 @@ export async function getItems(
 	}
 }
 
+export async function editItem(
+	req: Request,
+	res: Response,
+	next: NextFunction
+) {
+	try {
+		if (!req.userId) {
+			throw new ApiError(401, "Unauthorized");
+		}
+
+		const itemId = req.params.itemId;
+
+		if (!itemId) {
+			throw new ApiError(400, "itemId is missing");
+		}
+
+		const { name, isPrivate }: Item = req.body;
+
+		if (!name) {
+			throw new ApiError(400, "Required fields are missing");
+		}
+
+		const existingItem = await db.item.findFirst({
+			where: {
+				id: itemId,
+				ownerId: req.userId,
+			},
+			select: {
+				id: true,
+				name: true,
+				isPrivate: true,
+			},
+		});
+
+		if (!existingItem) {
+			throw new ApiError(404, "Item not found");
+		}
+
+		if (existingItem.name === name && existingItem.isPrivate === isPrivate) {
+			/* prevent unnecessary updates but response is ok as the values are same */
+			return ApiResponse(res, 200, { message: "Item updated" });
+		}
+
+		await db.item.update({
+			where: { id: existingItem.id },
+			data: {
+				name,
+				isPrivate,
+			},
+		});
+
+		ApiResponse(res, 200, { message: "Item updated" });
+	} catch (error) {
+		next(error);
+	}
+}
+
 export async function createFolder(
 	req: Request,
 	res: Response,
@@ -237,7 +338,7 @@ export async function createFolder(
 
 		const folderId = params[params.length - 1];
 
-		const { name, isPrivate }: Item = req.body;
+		const { name, isPrivate, size }: Item = req.body;
 
 		if (!name) {
 			throw new ApiError(400, "Required fields are missing");
@@ -253,6 +354,8 @@ export async function createFolder(
 				},
 				select: {
 					id: true,
+					size: true,
+					isPrivate: true,
 				},
 			});
 
@@ -260,18 +363,29 @@ export async function createFolder(
 				throw new ApiError(404, "Folder not found");
 			}
 
+			const updatedSize = existingFolder.size + size;
 			const previewUrl = crypto.randomBytes(12).toString("hex");
 
-			await db.item.create({
-				data: {
-					name,
-					previewUrl,
-					isFolder: true,
-					owner: { connect: { id: req.userId } },
-					parent: { connect: { id: existingFolder.id } },
-					isPrivate: isPrivate ? isPrivate : false,
-				},
-			});
+			await db.$transaction([
+				db.item.create({
+					data: {
+						name,
+						previewUrl,
+						isFolder: true,
+						owner: { connect: { id: req.userId } },
+						parent: { connect: { id: existingFolder.id } },
+						isPrivate: isPrivate ? isPrivate : existingFolder.isPrivate,
+						size: size ? size : 0,
+					},
+				}),
+
+				db.item.update({
+					where: { id: existingFolder.id },
+					data: {
+						size: updatedSize,
+					},
+				}),
+			]);
 
 			return ApiResponse(res, 201, { message: "Folder created" });
 		}
@@ -285,6 +399,7 @@ export async function createFolder(
 				isFolder: true,
 				owner: { connect: { id: req.userId } },
 				isPrivate: isPrivate ? isPrivate : false,
+				size: size ? size : 0,
 			},
 		});
 
@@ -348,7 +463,6 @@ export async function getItemsByQuery(
 				where: {
 					ownerId: req.userId,
 					isStarred: true,
-					isFolder: false,
 					isTrash: false,
 				},
 				include: {
@@ -368,7 +482,7 @@ export async function getItemsByQuery(
 				where: {
 					sharedWith: { some: { userId: req.userId } },
 					isPrivate: true,
-					isTrash: true,
+					isTrash: false,
 				},
 				include: {
 					owner: {
@@ -406,8 +520,90 @@ export async function getItemsByQuery(
 					ownerId: req.userId,
 					isTrash: true,
 				},
+				include: {
+					owner: {
+						select: {
+							email: true,
+							name: true,
+							image: true,
+						},
+					},
+				},
 			});
 		}
+
+		ApiResponse(res, 200, { items });
+	} catch (error) {
+		next(error);
+	}
+}
+
+export async function getSharedItems(
+	req: Request,
+	res: Response,
+	next: NextFunction
+) {
+	try {
+		if (!req.userId) {
+			throw new ApiError(401, "Unauthorized");
+		}
+
+		const params = req.params[0].split("/");
+
+		const folderId = params[params.length - 1];
+
+		if (folderId) {
+			const existingFolder = await db.item.findFirst({
+				where: {
+					id: folderId,
+					isFolder: true,
+					isTrash: false,
+				},
+				select: {
+					id: true,
+				},
+			});
+
+			if (!existingFolder) {
+				throw new ApiError(404, "Folder not found");
+			}
+
+			const items = await db.item.findMany({
+				where: {
+					parentId: existingFolder.id,
+					isPrivate: true,
+					isTrash: false,
+				},
+				include: {
+					owner: {
+						select: {
+							email: true,
+							name: true,
+							image: true,
+						},
+					},
+				},
+			});
+
+			return ApiResponse(res, 200, { items });
+		}
+
+		const items = await db.item.findMany({
+			where: {
+				sharedWith: { some: { userId: req.userId } },
+				isPrivate: true,
+				isTrash: false,
+			},
+			include: {
+				owner: {
+					select: {
+						email: true,
+						name: true,
+						image: true,
+					},
+				},
+			},
+		});
 
 		ApiResponse(res, 200, { items });
 	} catch (error) {
@@ -456,7 +652,7 @@ export async function manageStarredItems(
 				},
 			});
 
-			return ApiResponse(res, 200, "File Starred");
+			return ApiResponse(res, 200, { message: "File Starred" });
 		}
 
 		await db.item.update({
@@ -468,7 +664,7 @@ export async function manageStarredItems(
 			},
 		});
 
-		ApiResponse(res, 200, "File Unstarred");
+		ApiResponse(res, 200, { message: "File Unstarred" });
 	} catch (error) {
 		next(error);
 	}
@@ -488,6 +684,10 @@ export async function shareItem(
 
 		if (!userId) {
 			throw new ApiError(400, "Required field is missing");
+		}
+
+		if (userId === req.userId) {
+			throw new ApiError(400, "You cannot share item to yourself");
 		}
 
 		const itemId = req.params.itemId;
@@ -576,23 +776,14 @@ export async function makeTrash(
 			throw new ApiError(404, "Item not found");
 		}
 
-		await db.$transaction([
-			db.item.update({
-				where: { id: item.id },
-				data: {
-					isTrash: true,
-				},
-			}),
+		await db.item.update({
+			where: { id: item.id },
+			data: {
+				isTrash: true,
+			},
+		});
 
-			db.item.updateMany({
-				where: { parentId: item.id, isTrash: false },
-				data: {
-					isTrash: true,
-				},
-			}),
-		]);
-
-		ApiResponse(res, 200, { message: "File sent to trash" });
+		ApiResponse(res, 200, { message: "Item sent to trash" });
 	} catch (error) {
 		next(error);
 	}
@@ -625,25 +816,16 @@ export async function restoreItem(
 			throw new ApiError(404, "Item not found");
 		}
 
-		await db.$transaction([
-			db.item.update({
-				where: {
-					id: item.id,
-				},
-				data: {
-					isTrash: false,
-				},
-			}),
+		await db.item.update({
+			where: {
+				id: item.id,
+			},
+			data: {
+				isTrash: false,
+			},
+		});
 
-			db.item.updateMany({
-				where: { parentId: item.id, isTrash: true },
-				data: {
-					isTrash: false,
-				},
-			}),
-		]);
-
-		ApiResponse(res, 200, { message: "Items restored" });
+		ApiResponse(res, 200, { message: "Item restored" });
 	} catch (error) {
 		next(error);
 	}
@@ -678,7 +860,7 @@ export async function deleteItem(
 
 		await db.$transaction([
 			db.item.deleteMany({
-				where: { parentId: item.id, isTrash: true },
+				where: { parentId: item.id },
 			}),
 
 			db.item.delete({

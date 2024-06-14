@@ -1,7 +1,7 @@
 import { Router } from "express";
 import passport from "passport";
 import {
-	getUser,
+	getUsers,
 	login,
 	logout,
 	passportAuth,
@@ -23,7 +23,7 @@ router.get(
 	passportAuth
 );
 
-router.get("/users", verifyJWT, getUser);
+router.get("/users", verifyJWT, getUsers);
 router.post("/register", register);
 router.post("/login", login);
 router.post("/logout", verifyJWT, logout);

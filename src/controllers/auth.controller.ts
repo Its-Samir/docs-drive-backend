@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import { db } from "../utils/db.ts";
-import { ApiError, ApiResponse } from "../utils/responses/responses.ts";
+import { ApiError, ApiResponse } from "../utils/responses.ts";
 import jwt from "jsonwebtoken";
 import { User } from "@prisma/client";
 import bcrypt from "bcryptjs";
@@ -169,7 +169,7 @@ export async function logout(req: Request, res: Response, next: NextFunction) {
 	}
 }
 
-export async function getUser(req: Request, res: Response, next: NextFunction) {
+export async function getUsers(req: Request, res: Response, next: NextFunction) {
 	try {
 		if (!req.userId) {
 			throw new ApiError(401, "Unauthorized");
