@@ -3,6 +3,8 @@ import { ApiError, ApiResponse } from "../utils/responses.ts";
 import { db } from "../utils/db.ts";
 import { Item, MediaType } from "@prisma/client";
 import crypto from "crypto";
+import { deleteObject, ref } from "firebase/storage";
+import { storage } from "../utils/firebase-config.ts";
 
 export async function createFile(
 	req: Request,
@@ -344,6 +346,10 @@ export async function createFolder(
 			throw new ApiError(400, "Required fields are missing");
 		}
 
+		const existingItem = await db.item.findUnique({ where: { name } });
+
+		if (existingItem) throw new ApiError(409, "Folder name already exists");
+
 		if (folderId) {
 			const existingFolder = await db.item.findFirst({
 				where: {
@@ -411,6 +417,57 @@ export async function createFolder(
 		});
 
 		ApiResponse(res, 201, { message: "Folder created" });
+	} catch (error) {
+		next(error);
+	}
+}
+
+export async function getItemsCount(
+	req: Request,
+	res: Response,
+	next: NextFunction
+) {
+	try {
+		if (!req.userId) {
+			throw new ApiError(401, "Unauthorized");
+		}
+
+		const [folder, file, privates, sharedByUser, sharedWithUser] =
+			await db.$transaction([
+				db.item.count({ where: { ownerId: req.userId, isFolder: true } }),
+				db.item.count({ where: { ownerId: req.userId, isFolder: false } }),
+				db.item.count({ where: { ownerId: req.userId, isPrivate: true } }),
+				db.sharedItem.count({ where: { ownerId: req.userId } }),
+				db.sharedItem.count({ where: { userId: req.userId } }),
+			]);
+
+		const data: { name: string; count: number }[] = [];
+
+		Object.keys({
+			folder,
+			file,
+			privates,
+			sharedByUser,
+			sharedWithUser,
+		}).forEach((val) => {
+			if (val === "folder") {
+				data.push({ name: "Folder", count: folder });
+			}
+			if (val === "file") {
+				data.push({ name: "File", count: file });
+			}
+			if (val === "privates") {
+				data.push({ name: "Private", count: privates });
+			}
+			if (val === "sharedByUser") {
+				data.push({ name: "Shared by You", count: sharedByUser });
+			}
+			if (val === "sharedWithUser") {
+				data.push({ name: "Shared with You", count: sharedWithUser });
+			}
+		});
+
+		ApiResponse(res, 200, data);
 	} catch (error) {
 		next(error);
 	}
@@ -851,6 +908,13 @@ export async function deleteItem(
 			where: { id: itemId, isTrash: true, ownerId: req.userId },
 			select: {
 				id: true,
+				isFolder: true,
+				media: true,
+				_count: {
+					select: {
+						childrens: true,
+					},
+				},
 			},
 		});
 
@@ -858,15 +922,43 @@ export async function deleteItem(
 			throw new ApiError(404, "Item not found");
 		}
 
-		await db.$transaction([
-			db.item.deleteMany({
-				where: { parentId: item.id },
-			}),
+		const items = await db.item.findMany({
+			where: {
+				parentId: item.id,
+				isFolder: false,
+			},
+			select: {
+				media: true,
+			},
+		});
 
-			db.item.delete({
-				where: { id: item.id },
-			}),
-		]);
+		if (!item.isFolder) {
+			const storageRef = ref(storage, item.media!);
+			storageRef.toString() && deleteObject(storageRef);
+		}
+
+		items.forEach((item) => {
+			const storageRef = ref(storage, item.media!);
+			storageRef.toString() && deleteObject(storageRef);
+		});
+
+		if (item.isFolder && item._count.childrens > 0) {
+			await db.$transaction([
+				db.item.deleteMany({
+					where: { parentId: item.id },
+				}),
+
+				db.item.delete({
+					where: { id: item.id },
+				}),
+			]);
+
+			return ApiResponse(res, 200, { message: "File is deleted" });
+		}
+
+		await db.item.delete({
+			where: { id: item.id },
+		});
 
 		ApiResponse(res, 200, { message: "File is deleted" });
 	} catch (error) {

@@ -33,7 +33,12 @@ export async function passportAuth(
 			{ expiresIn: "1h" }
 		);
 
-		res.cookie("token", token, { httpOnly: true, maxAge: 3600000 })
+		res.cookie("token", token, {
+			httpOnly: true,
+			sameSite: "none",
+			secure: process.env.NODE_ENV === "development",
+			maxAge: 3600000,
+		})
 			.status(200)
 			.json({ token, user, loginTime: new Date() });
 	} catch (error) {
@@ -169,7 +174,11 @@ export async function logout(req: Request, res: Response, next: NextFunction) {
 	}
 }
 
-export async function getUsers(req: Request, res: Response, next: NextFunction) {
+export async function getUsers(
+	req: Request,
+	res: Response,
+	next: NextFunction
+) {
 	try {
 		if (!req.userId) {
 			throw new ApiError(401, "Unauthorized");
@@ -183,7 +192,7 @@ export async function getUsers(req: Request, res: Response, next: NextFunction) 
 
 		const users = await db.user.findMany({
 			where: { OR: [{ email }, { email: { contains: email } }] },
-			select: { id: true, email: true, name: true, image: true },
+			select: { id: true, email: true },
 		});
 
 		if (!users.length) return new ApiError(404, "User not found");

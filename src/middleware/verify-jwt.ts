@@ -24,7 +24,7 @@ export async function verifyJWT(
 		const token = req.headers["authorization"] || req.cookies["token"];
 
 		if (!token || typeof token !== "string") {
-			return next(new ApiError(401, "Unauthorized"));
+			throw new ApiError(401, "Unauthorized");
 		}
 
 		const decodedToken = jwt.verify(
@@ -33,7 +33,7 @@ export async function verifyJWT(
 		) as DecodedToken;
 
 		if (!decodedToken || !decodedToken.userId) {
-			return next(new ApiError(403, "Token not valid"));
+			throw new ApiError(403, "Token not valid");
 		}
 
 		const user = await db.user.findUnique({
@@ -44,13 +44,22 @@ export async function verifyJWT(
 		});
 
 		if (!user) {
-			return next(new ApiError(401, "Unauthorized"));
+			throw new ApiError(401, "Unauthorized");
 		}
 
 		req.userId = user.id;
 
 		next();
+
 	} catch (error) {
-		next(new ApiError(500, "JWT verification failed: " + error));
+		if (error instanceof jwt.JsonWebTokenError) {
+			return next(new ApiError(401, "Couldn't parse the token"));
+		}
+
+		if (error instanceof jwt.TokenExpiredError) {
+			return next(new ApiError(401, "Token is expired"));
+		}
+
+		next(error);
 	}
 }
