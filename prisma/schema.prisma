@@ -35,7 +35,7 @@ model Item {
   previewUrl String       @unique
   media      String?
   size       Int
-  name       String       @unique
+  name       String
   mediaType  MediaType?
   isStarred  Boolean      @default(false)
   isFolder   Boolean      @default(false)

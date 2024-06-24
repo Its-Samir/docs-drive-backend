@@ -35,12 +35,40 @@ export async function passportAuth(
 
 		res.cookie("token", token, {
 			httpOnly: true,
-			sameSite: "none",
+			sameSite: "lax",
 			secure: process.env.NODE_ENV === "development",
 			maxAge: 3600000,
 		})
 			.status(200)
-			.json({ token, user, loginTime: new Date() });
+			.redirect(
+				`${process.env.CLIENT_APP_AUTHENTICATE_URL}?credentials=true&oauth=true&auth_token=${token}`
+			);
+	} catch (error) {
+		next(error);
+	}
+}
+
+export async function getAccountData(
+	req: Request,
+	res: Response,
+	next: NextFunction
+) {
+	try {
+		if (!req.userId) throw new ApiError(401, "Unauthorized request");
+
+		const user = await db.user.findUnique({
+			where: { id: req.userId },
+			select: {
+				id: true,
+				email: true,
+				image: true,
+				name: true,
+			},
+		});
+
+		const token = req.cookies["token"];
+
+		res.status(200).json({ token, user, loginTime: new Date() });
 	} catch (error) {
 		next(error);
 	}
@@ -144,11 +172,11 @@ export async function login(req: Request, res: Response, next: NextFunction) {
 		res.cookie("token", token, {
 			httpOnly: true,
 			maxAge: 3600000,
-			secure: process.env.NODE_ENV === "production",
+			sameSite: "lax",
+			secure: process.env.NODE_ENV === "development",
 		})
 			.status(200)
 			.json({
-				token,
 				user: {
 					id: existingUser.id,
 					email: existingUser.email,

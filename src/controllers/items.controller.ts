@@ -346,7 +346,9 @@ export async function createFolder(
 			throw new ApiError(400, "Required fields are missing");
 		}
 
-		const existingItem = await db.item.findUnique({ where: { name } });
+		const existingItem = await db.item.findFirst({
+			where: { name, ownerId: req.userId },
+		});
 
 		if (existingItem) throw new ApiError(409, "Folder name already exists");
 

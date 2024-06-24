@@ -11,7 +11,8 @@ const app: Express = express();
 
 app.use(
 	cors({
-		origin: "http://localhost:5173",
+		origin: process.env.CLIENT_APP_URL,
+		credentials: true,
 	})
 );
 app.use(express.urlencoded({ extended: true }));

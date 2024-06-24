@@ -1,6 +1,7 @@
 import { Router } from "express";
 import passport from "passport";
 import {
+	getAccountData,
 	getUsers,
 	login,
 	logout,
@@ -23,6 +24,7 @@ router.get(
 	passportAuth
 );
 
+router.get("/account", verifyJWT, getAccountData);
 router.get("/users", verifyJWT, getUsers);
 router.post("/register", register);
 router.post("/login", login);
