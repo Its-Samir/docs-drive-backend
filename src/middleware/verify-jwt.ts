@@ -21,10 +21,10 @@ export async function verifyJWT(
 	next: NextFunction
 ) {
 	try {
-		const token = req.headers["authorization"] || req.cookies["token"];
+		const token = req.headers["authorization"] || req.cookies["access_token"];
 
 		if (!token || typeof token !== "string") {
-			throw new ApiError(401, "Unauthorized");
+			throw new ApiError(401, "Unauthorized request");
 		}
 
 		const decodedToken = jwt.verify(
@@ -44,13 +44,12 @@ export async function verifyJWT(
 		});
 
 		if (!user) {
-			throw new ApiError(401, "Unauthorized");
+			throw new ApiError(401, "No user found");
 		}
 
 		req.userId = user.id;
 
 		next();
-
 	} catch (error) {
 		if (error instanceof jwt.JsonWebTokenError) {
 			return next(new ApiError(401, "Couldn't parse the token"));

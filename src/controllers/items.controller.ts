@@ -13,7 +13,7 @@ export async function createFile(
 ) {
 	try {
 		if (!req.userId) {
-			throw new ApiError(401, "Unauthorized");
+			throw new ApiError(401, "Unauthorized request");
 		}
 
 		const params = req.params[0].split("/");
@@ -150,7 +150,7 @@ export async function getItemInfo(
 ) {
 	try {
 		if (!req.userId) {
-			throw new ApiError(401, "Unauthorized");
+			throw new ApiError(401, "Unauthorized request");
 		}
 
 		const itemId = req.params.itemId;
@@ -197,7 +197,7 @@ export async function getItems(
 ) {
 	try {
 		if (!req.userId) {
-			throw new ApiError(401, "Unauthorized");
+			throw new ApiError(401, "Unauthorized request");
 		}
 
 		const params = req.params[0].split("/");
@@ -276,7 +276,7 @@ export async function editItem(
 ) {
 	try {
 		if (!req.userId) {
-			throw new ApiError(401, "Unauthorized");
+			throw new ApiError(401, "Unauthorized request");
 		}
 
 		const itemId = req.params.itemId;
@@ -333,7 +333,7 @@ export async function createFolder(
 ) {
 	try {
 		if (!req.userId) {
-			throw new ApiError(401, "Unauthorized");
+			throw new ApiError(401, "Unauthorized request");
 		}
 
 		const params = req.params[0].split("/");
@@ -431,7 +431,7 @@ export async function getItemsCount(
 ) {
 	try {
 		if (!req.userId) {
-			throw new ApiError(401, "Unauthorized");
+			throw new ApiError(401, "Unauthorized request");
 		}
 
 		const [folder, file, privates, sharedByUser, sharedWithUser] =
@@ -482,7 +482,7 @@ export async function getItemsByQuery(
 ) {
 	try {
 		if (!req.userId) {
-			throw new ApiError(401, "Unauthorized");
+			throw new ApiError(401, "Unauthorized request");
 		}
 
 		let items: any = [];
@@ -604,7 +604,7 @@ export async function getSharedItems(
 ) {
 	try {
 		if (!req.userId) {
-			throw new ApiError(401, "Unauthorized");
+			throw new ApiError(401, "Unauthorized request");
 		}
 
 		const params = req.params[0].split("/");
@@ -677,7 +677,7 @@ export async function manageStarredItems(
 ) {
 	try {
 		if (!req.userId) {
-			throw new ApiError(401, "Unauthorized");
+			throw new ApiError(401, "Unauthorized request");
 		}
 
 		const { itemId } = req.params;
@@ -736,7 +736,7 @@ export async function shareItem(
 ) {
 	try {
 		if (!req.userId) {
-			throw new ApiError(401, "Unauthorized");
+			throw new ApiError(401, "Unauthorized request");
 		}
 
 		const { userId }: { userId: string } = req.body;
@@ -815,7 +815,7 @@ export async function makeTrash(
 ) {
 	try {
 		if (!req.userId) {
-			throw new ApiError(401, "Unauthorized");
+			throw new ApiError(401, "Unauthorized request");
 		}
 
 		const itemId = req.params.itemId;
@@ -855,7 +855,7 @@ export async function restoreItem(
 ) {
 	try {
 		if (!req.userId) {
-			throw new ApiError(401, "Unauthorized");
+			throw new ApiError(401, "Unauthorized request");
 		}
 
 		const itemId = req.params.itemId;
@@ -897,7 +897,7 @@ export async function deleteItem(
 ) {
 	try {
 		if (!req.userId) {
-			throw new ApiError(401, "Unauthorized");
+			throw new ApiError(401, "Unauthorized request");
 		}
 
 		const itemId = req.params.itemId;

@@ -33,7 +33,7 @@ export async function passportAuth(
 			{ expiresIn: "1h" }
 		);
 
-		res.cookie("token", token, {
+		res.cookie("access_token", token, {
 			httpOnly: true,
 			sameSite: "lax",
 			secure: process.env.NODE_ENV === "development",
@@ -66,7 +66,7 @@ export async function getAccountData(
 			},
 		});
 
-		const token = req.cookies["token"];
+		const token = req.cookies["access_token"];
 
 		res.status(200).json({ token, user, loginTime: new Date() });
 	} catch (error) {
@@ -169,7 +169,7 @@ export async function login(req: Request, res: Response, next: NextFunction) {
 			{ expiresIn: "1h" }
 		);
 
-		res.cookie("token", token, {
+		res.cookie("access_token", token, {
 			httpOnly: true,
 			maxAge: 3600000,
 			sameSite: "lax",
@@ -196,7 +196,9 @@ export async function logout(req: Request, res: Response, next: NextFunction) {
 			throw new ApiError(401, "Unauthorized");
 		}
 
-		res.cookie("token", "").status(200).json({ message: "User logged out" });
+		res.clearCookie("access_token")
+			.status(200)
+			.json({ message: "User logged out" });
 	} catch (error) {
 		next(error);
 	}
