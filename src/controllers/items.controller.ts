@@ -3,8 +3,6 @@ import { ApiError, ApiResponse } from "../utils/responses.ts";
 import { db } from "../utils/db.ts";
 import { Item, MediaType } from "@prisma/client";
 import crypto from "crypto";
-// import { deleteObject, ref } from "firebase/storage";
-// import { storage } from "../utils/firebase-config.ts";
 import { bucket, upload } from "../utils/upload.ts";
 import { getStorage } from "firebase-admin/storage";
 
