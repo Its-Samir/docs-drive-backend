@@ -941,7 +941,9 @@ export async function deleteItem(
 
 		if (!item.isFolder) {
 			const storageRef = getStorage().bucket(bucket.name);
-			const ref = storageRef.file("drive/" + item.name);
+			const ref = storageRef.file(
+				`${process.env.STORAGE_BUCKET}/${item.name}`
+			);
 
 			await ref.delete();
 		}
@@ -949,7 +951,9 @@ export async function deleteItem(
 		items.length > 0 &&
 			items.forEach(async (item) => {
 				const storageRef = getStorage().bucket(bucket.name);
-				const ref = storageRef.file("drive/" + item.name);
+				const ref = storageRef.file(
+					`${process.env.STORAGE_BUCKET}/${item.name}`
+				);
 
 				await ref.delete();
 			});

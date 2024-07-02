@@ -16,7 +16,7 @@ export const bucket = admin.storage().bucket();
 
 export const upload = async (path: string, filename: string) => {
 	const url = await bucket.upload(path, {
-		destination: "drive/" + filename,
+		destination: `${process.env.STORAGE_BUCKET}/${filename}`,
 		public: true,
 		metadata: {
 			metadata: {
