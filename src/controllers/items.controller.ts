@@ -3,8 +3,10 @@ import { ApiError, ApiResponse } from "../utils/responses.ts";
 import { db } from "../utils/db.ts";
 import { Item, MediaType } from "@prisma/client";
 import crypto from "crypto";
-import { deleteObject, ref } from "firebase/storage";
-import { storage } from "../utils/firebase-config.ts";
+// import { deleteObject, ref } from "firebase/storage";
+// import { storage } from "../utils/firebase-config.ts";
+import { bucket, upload } from "../utils/upload.ts";
+import { getStorage } from "firebase-admin/storage";
 
 export async function createFile(
 	req: Request,
@@ -20,11 +22,11 @@ export async function createFile(
 
 		const folderId = params[params.length - 1];
 
-		const { name, media, isPrivate, mediaType, size }: Item = req.body;
+		const { isPrivate } = req.body;
 
-		if (!name || !media || !mediaType || !size) {
-			throw new ApiError(400, "Required fields are missing");
-		}
+		if (!req.file) return new ApiError(400, "File is required");
+
+		const size = req.file.size;
 
 		if (folderId) {
 			const existingFolder = await db.item.findFirst({
@@ -50,27 +52,28 @@ export async function createFile(
 
 			const updatedSize = existingFolder.size + size;
 			const previewUrl = crypto.randomBytes(12).toString("hex");
+			const imageUrl = await upload(req.file.path, req.file.filename);
 
 			await db.$transaction([
 				db.item.create({
 					data: {
-						name,
-						media,
-						mediaType:
-							mediaType === "PDF"
-								? MediaType.PDF
-								: mediaType === "IMAGE"
-								? MediaType.IMAGE
-								: mediaType === "VIDEO"
-								? MediaType.VIDEO
-								: mediaType === "OFFICE"
-								? MediaType.OFFICE
-								: MediaType.UNKNOWN,
+						name: req.file.filename,
+						media: imageUrl,
+						mediaType: req.file.mimetype.startsWith("application/pdf")
+							? MediaType.PDF
+							: req.file.mimetype.startsWith("image/")
+							? MediaType.IMAGE
+							: req.file.mimetype.startsWith("video/")
+							? MediaType.VIDEO
+							: req.file.mimetype.startsWith("application/vnd.")
+							? MediaType.OFFICE
+							: MediaType.UNKNOWN,
 						previewUrl,
 						size,
 						owner: { connect: { id: req.userId } },
 						parent: { connect: { id: existingFolder.id } },
-						isPrivate: isPrivate ? isPrivate : existingFolder.isPrivate,
+						isPrivate:
+							isPrivate === "true" ? true : existingFolder.isPrivate,
 					},
 				}),
 
@@ -108,25 +111,25 @@ export async function createFile(
 		}
 
 		const previewUrl = crypto.randomBytes(12).toString("hex");
+		const imageUrl = await upload(req.file.path, req.file.filename);
 
 		const file = await db.item.create({
 			data: {
-				name,
-				media,
-				mediaType:
-					mediaType === "PDF"
-						? MediaType.PDF
-						: mediaType === "IMAGE"
-						? MediaType.IMAGE
-						: mediaType === "VIDEO"
-						? MediaType.VIDEO
-						: mediaType === "OFFICE"
-						? MediaType.OFFICE
-						: MediaType.UNKNOWN,
+				name: req.file.filename,
+				media: imageUrl,
+				mediaType: req.file.mimetype.startsWith("application/pdf")
+					? MediaType.PDF
+					: req.file.mimetype.startsWith("image/")
+					? MediaType.IMAGE
+					: req.file.mimetype.startsWith("video/")
+					? MediaType.VIDEO
+					: req.file.mimetype.startsWith("application/vnd.")
+					? MediaType.OFFICE
+					: MediaType.UNKNOWN,
 				previewUrl,
 				size,
 				owner: { connect: { id: req.userId } },
-				isPrivate: isPrivate ? isPrivate : false,
+				isPrivate: isPrivate === "true" ? true : false,
 			},
 		});
 
@@ -383,7 +386,7 @@ export async function createFolder(
 						owner: { connect: { id: req.userId } },
 						parent: { connect: { id: existingFolder.id } },
 						isPrivate: isPrivate ? isPrivate : existingFolder.isPrivate,
-						size: size ? size : 0,
+						size,
 					},
 				}),
 
@@ -406,8 +409,8 @@ export async function createFolder(
 				previewUrl,
 				isFolder: true,
 				owner: { connect: { id: req.userId } },
-				isPrivate: isPrivate ? isPrivate : false,
-				size: size ? size : 0,
+				isPrivate,
+				size,
 			},
 		});
 
@@ -911,6 +914,7 @@ export async function deleteItem(
 			select: {
 				id: true,
 				isFolder: true,
+				name: true,
 				media: true,
 				_count: {
 					select: {
@@ -930,19 +934,25 @@ export async function deleteItem(
 				isFolder: false,
 			},
 			select: {
+				name: true,
 				media: true,
 			},
 		});
 
 		if (!item.isFolder) {
-			const storageRef = ref(storage, item.media!);
-			storageRef.toString() && deleteObject(storageRef);
+			const storageRef = getStorage().bucket(bucket.name);
+			const ref = storageRef.file("drive/" + item.name);
+
+			await ref.delete();
 		}
 
-		items.forEach((item) => {
-			const storageRef = ref(storage, item.media!);
-			storageRef.toString() && deleteObject(storageRef);
-		});
+		items.length > 0 &&
+			items.forEach(async (item) => {
+				const storageRef = getStorage().bucket(bucket.name);
+				const ref = storageRef.file("drive/" + item.name);
+
+				await ref.delete();
+			});
 
 		if (item.isFolder && item._count.childrens > 0) {
 			await db.$transaction([

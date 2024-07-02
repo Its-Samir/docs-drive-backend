@@ -15,6 +15,8 @@ import {
 	restoreItem,
 	shareItem,
 } from "../controllers/items.controller.ts";
+import multer from "multer";
+import { storage } from "../utils/multer-upload.js";
 
 const router = Router();
 
@@ -25,7 +27,7 @@ router.get("/items/count", getItemsCount);
 router.get("/items/files-folders/*", getItems);
 router.get("/items/shared/*", getSharedItems);
 router.get("/items/:itemId", getItemInfo);
-router.post("/items/files/*", createFile);
+router.post("/items/files/*", multer({ storage }).single("upload"), createFile);
 router.post("/items/folders/*", createFolder);
 router.put("/items/:itemId", editItem);
 router.put("/items/:itemId/starred", manageStarredItems);
