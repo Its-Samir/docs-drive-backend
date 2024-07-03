@@ -7,9 +7,9 @@ import {
 	logout,
 	passportAuth,
 	register,
-} from "../controllers/auth.controller.ts";
-import "../utils/passport-auth.ts";
-import { verifyJWT } from "../middleware/verify-jwt.ts";
+} from "../controllers/auth.controller";
+import "../utils/passport-auth";
+import { verifyJWT } from "../middleware/verify-jwt";
 
 const router = Router();
 

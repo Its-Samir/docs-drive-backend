@@ -1,9 +1,9 @@
 import express, { Express, Request, Response, NextFunction } from "express";
-import { ExtendedError } from "./types/index.ts";
-import { ApiError, ApiResponse } from "./utils/responses.ts";
+import { ExtendedError } from "./types/index";
+import { ApiError, ApiResponse } from "./utils/responses";
 import session from "express-session";
-import authRouter from "./routes/auth.route.ts";
-import itemRouter from "./routes/items.route.ts";
+import authRouter from "./routes/auth.route";
+import itemRouter from "./routes/items.route";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 

@@ -1,6 +1,6 @@
 import passport from "passport";
-import { db } from "./db.ts";
-import { ApiError } from "./responses.ts";
+import { db } from "./db";
+import { ApiError } from "./responses";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import { User as UserSchema } from "@prisma/client";
 

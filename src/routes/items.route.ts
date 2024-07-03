@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { verifyJWT } from "../middleware/verify-jwt.ts";
+import { verifyJWT } from "../middleware/verify-jwt";
 import {
 	createFile,
 	createFolder,
@@ -14,7 +14,7 @@ import {
 	manageStarredItems,
 	restoreItem,
 	shareItem,
-} from "../controllers/items.controller.ts";
+} from "../controllers/items.controller";
 import multer from "multer";
 import { storage } from "../utils/multer-upload.js";
 
@@ -27,7 +27,7 @@ router.get("/items/count", getItemsCount);
 router.get("/items/files-folders/*", getItems);
 router.get("/items/shared/*", getSharedItems);
 router.get("/items/:itemId", getItemInfo);
-router.post("/items/files/*", multer({ storage }).single("upload"), createFile);
+router.post("/items/files/*", multer({ storage }).single("file"), createFile);
 router.post("/items/folders/*", createFolder);
 router.put("/items/:itemId", editItem);
 router.put("/items/:itemId/starred", manageStarredItems);

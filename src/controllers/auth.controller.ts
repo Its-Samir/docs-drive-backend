@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from "express";
-import { db } from "../utils/db.ts";
-import { ApiError, ApiResponse } from "../utils/responses.ts";
+import { db } from "../utils/db";
+import { ApiError, ApiResponse } from "../utils/responses";
 import jwt from "jsonwebtoken";
 import { User } from "@prisma/client";
 import bcrypt from "bcryptjs";
@@ -36,7 +36,7 @@ export async function passportAuth(
 		res.cookie("access_token", token, {
 			httpOnly: true,
 			sameSite: "lax",
-			secure: process.env.NODE_ENV === "development",
+			secure: process.env.NODE_ENV === "production",
 			maxAge: 3600000,
 		})
 			.status(200)
@@ -173,7 +173,7 @@ export async function login(req: Request, res: Response, next: NextFunction) {
 			httpOnly: true,
 			maxAge: 3600000,
 			sameSite: "lax",
-			secure: process.env.NODE_ENV === "development",
+			secure: process.env.NODE_ENV === "production",
 		})
 			.status(200)
 			.json({

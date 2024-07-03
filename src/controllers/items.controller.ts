@@ -1,9 +1,9 @@
 import { Request, Response, NextFunction } from "express";
-import { ApiError, ApiResponse } from "../utils/responses.ts";
-import { db } from "../utils/db.ts";
+import { ApiError, ApiResponse } from "../utils/responses";
+import { db } from "../utils/db";
 import { Item, MediaType } from "@prisma/client";
 import crypto from "crypto";
-import { bucket, upload } from "../utils/upload.ts";
+import { bucket, upload } from "../utils/upload";
 import { getStorage } from "firebase-admin/storage";
 
 export async function createFile(
@@ -939,9 +939,7 @@ export async function deleteItem(
 
 		if (!item.isFolder) {
 			const storageRef = getStorage().bucket(bucket.name);
-			const ref = storageRef.file(
-				`${process.env.STORAGE_BUCKET}/${item.name}`
-			);
+			const ref = storageRef.file("drive/" + item.name);
 
 			await ref.delete();
 		}
@@ -949,9 +947,7 @@ export async function deleteItem(
 		items.length > 0 &&
 			items.forEach(async (item) => {
 				const storageRef = getStorage().bucket(bucket.name);
-				const ref = storageRef.file(
-					`${process.env.STORAGE_BUCKET}/${item.name}`
-				);
+				const ref = storageRef.file("drive/" + item.name);
 
 				await ref.delete();
 			});

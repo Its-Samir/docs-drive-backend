@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
-import { ApiError } from "../utils/responses.ts";
+import { ApiError } from "../utils/responses";
 import jwt, { JwtPayload } from "jsonwebtoken";
-import { db } from "../utils/db.ts";
+import { db } from "../utils/db";
 
 declare global {
 	namespace Express {
