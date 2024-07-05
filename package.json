@@ -6,7 +6,8 @@
 	"scripts": {
 		"dev": "node --loader ts-node/esm ./src/index.ts",
 		"build": "tsc",
-		"start": "tsc && nodemon ./dist/index.js"
+		"start": "tsc && node ./dist/index.js",
+		"postinstall": "prisma generate"
 	},
 	"keywords": [],
 	"author": "",

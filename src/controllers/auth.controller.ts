@@ -35,7 +35,7 @@ export async function passportAuth(
 
 		res.cookie("access_token", token, {
 			httpOnly: true,
-			sameSite: "lax",
+			sameSite: "none",
 			secure: process.env.NODE_ENV === "production",
 			maxAge: 3600000,
 		})
@@ -172,7 +172,7 @@ export async function login(req: Request, res: Response, next: NextFunction) {
 		res.cookie("access_token", token, {
 			httpOnly: true,
 			maxAge: 3600000,
-			sameSite: "lax",
+			sameSite: "none",
 			secure: process.env.NODE_ENV === "production",
 		})
 			.status(200)
