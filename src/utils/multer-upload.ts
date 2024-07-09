@@ -1,9 +1,7 @@
 import multer from "multer";
 
 export const storage = multer.diskStorage({
-	destination(_, __, callback) {
-		callback(null, "./public/temp");
-	},
+	destination: require.main?.path + "/" +" public/temp/",
 	filename(_, file, callback) {
 		callback(
 			null,

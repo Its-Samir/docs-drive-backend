@@ -6,9 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.storage = void 0;
 const multer_1 = __importDefault(require("multer"));
 exports.storage = multer_1.default.diskStorage({
-    destination(_, __, callback) {
-        callback(null, "./public/temp");
-    },
+    destination: require.main?.path + "/" + " public/temp/",
     filename(_, file, callback) {
         callback(null, crypto.randomUUID().slice(0, 5) +
             "-" +
