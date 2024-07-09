@@ -7,10 +7,10 @@ exports.storage = void 0;
 const multer_1 = __importDefault(require("multer"));
 const path_1 = __importDefault(require("path"));
 exports.storage = multer_1.default.diskStorage({
-    destination(_, __, callback) {
-        callback(null, path_1.default.resolve(__dirname, "public", "temp"));
+    destination: (_, __, callback) => {
+        callback(null, path_1.default.join(__dirname, "..", "..", "public", "temp"));
     },
-    filename(_, file, callback) {
+    filename: (_, file, callback) => {
         callback(null, crypto.randomUUID().slice(0, 5) +
             "-" +
             file.originalname.split(" ").join("-"));
