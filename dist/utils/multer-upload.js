@@ -5,9 +5,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.storage = void 0;
 const multer_1 = __importDefault(require("multer"));
+const path_1 = __importDefault(require("path"));
 exports.storage = multer_1.default.diskStorage({
     destination(_, __, callback) {
-        callback(null, "../public/temp");
+        callback(null, path_1.default.resolve(__dirname, "public", "temp"));
     },
     filename(_, file, callback) {
         callback(null, crypto.randomUUID().slice(0, 5) +
