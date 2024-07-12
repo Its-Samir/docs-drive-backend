@@ -54,7 +54,9 @@ export async function getAccountData(
 	next: NextFunction
 ) {
 	try {
-		if (!req.userId) throw new ApiError(401, "Unauthorized request");
+		if (!req.userId) {
+			throw new ApiError(401, "Unauthorized request");
+		}
 
 		const user = await db.user.findUnique({
 			where: { id: req.userId },
@@ -65,6 +67,10 @@ export async function getAccountData(
 				name: true,
 			},
 		});
+
+		if (!user) {
+			throw new ApiError(404, "User not found");
+		}
 
 		const token = req.cookies["access_token"];
 

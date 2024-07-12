@@ -9,7 +9,7 @@ import {
 	register,
 } from "../controllers/auth.controller";
 import "../utils/passport-auth";
-import { verifyJWT } from "../middleware/verify-jwt";
+import { verifyJWT } from "../middlewares/verify-jwt";
 
 const router = Router();
 

@@ -8,10 +8,10 @@ const multer_1 = __importDefault(require("multer"));
 const path_1 = __importDefault(require("path"));
 let tempDirectory;
 if (process.env.NODE_ENV === "development") {
-    tempDirectory = path_1.default.join(__dirname, `../../tmp/`);
+    tempDirectory = path_1.default.join(__dirname, "../../temp/");
 }
 else {
-    tempDirectory = "/tmp/";
+    tempDirectory = "/temp/";
 }
 exports.storage = multer_1.default.diskStorage({
     destination: (_, __, callback) => {

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { verifyJWT } from "../middleware/verify-jwt";
+import { verifyJWT } from "../middlewares/verify-jwt";
 import {
 	createFile,
 	createFolder,
@@ -16,7 +16,7 @@ import {
 	shareItem,
 } from "../controllers/items.controller";
 import multer from "multer";
-import { storage } from "../utils/multer-upload.js";
+import { storage } from "../middlewares/multer-upload.js";
 
 const router = Router();
 

@@ -21,7 +21,7 @@ export async function verifyJWT(
 	next: NextFunction
 ) {
 	try {
-		const token = req.headers["authorization"] || req.cookies["access_token"];
+		const token = req.headers["authorization"]?.replace("Bearer ", "") || req.cookies["access_token"];
 
 		if (!token || typeof token !== "string") {
 			throw new ApiError(401, "Unauthorized request");

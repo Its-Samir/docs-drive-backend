@@ -4,9 +4,9 @@ import path from "path";
 let tempDirectory: string;
 
 if (process.env.NODE_ENV === "development") {
-	tempDirectory = path.join(__dirname, `../../tmp/`);
+	tempDirectory = path.join(__dirname, "../../temp/");
 } else {
-	tempDirectory = "/tmp/";
+	tempDirectory = "/temp/";
 }
 
 export const storage = multer.diskStorage({

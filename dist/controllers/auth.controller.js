@@ -41,8 +41,9 @@ async function passportAuth(req, res, next) {
 exports.passportAuth = passportAuth;
 async function getAccountData(req, res, next) {
     try {
-        if (!req.userId)
+        if (!req.userId) {
             throw new responses_1.ApiError(401, "Unauthorized request");
+        }
         const user = await db_1.db.user.findUnique({
             where: { id: req.userId },
             select: {
@@ -52,6 +53,9 @@ async function getAccountData(req, res, next) {
                 name: true,
             },
         });
+        if (!user) {
+            throw new responses_1.ApiError(404, "User not found");
+        }
         const token = req.cookies["access_token"];
         res.status(200).json({ token, user, loginTime: new Date() });
     }

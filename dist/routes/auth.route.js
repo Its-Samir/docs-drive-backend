@@ -7,7 +7,7 @@ const express_1 = require("express");
 const passport_1 = __importDefault(require("passport"));
 const auth_controller_1 = require("../controllers/auth.controller");
 require("../utils/passport-auth");
-const verify_jwt_1 = require("../middleware/verify-jwt");
+const verify_jwt_1 = require("../middlewares/verify-jwt");
 const router = (0, express_1.Router)();
 router.get("/auth/google", passport_1.default.authenticate("google", { scope: ["profile", "email"] }));
 router.get("/auth/google/callback", passport_1.default.authenticate("google"), auth_controller_1.passportAuth);

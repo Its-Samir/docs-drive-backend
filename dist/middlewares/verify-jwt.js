@@ -9,7 +9,7 @@ const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const db_1 = require("../utils/db");
 async function verifyJWT(req, res, next) {
     try {
-        const token = req.headers["authorization"] || req.cookies["access_token"];
+        const token = req.headers["authorization"]?.replace("Bearer ", "") || req.cookies["access_token"];
         if (!token || typeof token !== "string") {
             throw new responses_1.ApiError(401, "Unauthorized request");
         }

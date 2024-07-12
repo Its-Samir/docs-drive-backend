@@ -4,10 +4,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
-const verify_jwt_1 = require("../middleware/verify-jwt");
+const verify_jwt_1 = require("../middlewares/verify-jwt");
 const items_controller_1 = require("../controllers/items.controller");
 const multer_1 = __importDefault(require("multer"));
-const multer_upload_js_1 = require("../utils/multer-upload.js");
+const multer_upload_js_1 = require("../middlewares/multer-upload.js");
 const router = (0, express_1.Router)();
 router.use(verify_jwt_1.verifyJWT);
 router.get("/items", items_controller_1.getItemsByQuery);
