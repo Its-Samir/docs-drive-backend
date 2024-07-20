@@ -11,15 +11,17 @@ if (process.env.NODE_ENV === "development") {
     tempDirectory = path_1.default.join(__dirname, "../../tmp/");
 }
 else {
-    tempDirectory = "/tmp/";
+    tempDirectory = "./tmp/";
 }
 exports.storage = multer_1.default.diskStorage({
     destination: (_, __, callback) => {
         callback(null, tempDirectory);
     },
     filename: (_, file, callback) => {
-        callback(null, crypto.randomUUID().slice(0, 5) +
+        const ext = file.originalname.split(".").pop();
+        const filename = file.originalname.split(".")[0].split(" ").join("-") +
             "-" +
-            file.originalname.split(" ").join("-"));
+            crypto.randomUUID().slice(0, 5);
+        callback(null, filename + "." + ext);
     },
 });
