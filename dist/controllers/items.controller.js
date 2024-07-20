@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteItem = exports.restoreItem = exports.makeTrash = exports.shareItem = exports.manageStarredItems = exports.getSharedItems = exports.getItemsByQuery = exports.getItemsCount = exports.createFolder = exports.editItem = exports.getItems = exports.getItemInfo = exports.createFile = void 0;
+exports.deleteItem = exports.restoreItem = exports.makeTrash = exports.shareItem = exports.manageStarredItems = exports.getSharedItems = exports.getItemsByQuery = exports.getItemsCount = exports.createFolder = exports.editItem = exports.getItems = exports.getFilePreview = exports.getItemInfo = exports.createFile = void 0;
 const responses_1 = require("../utils/responses");
 const db_1 = require("../utils/db");
 const client_1 = require("@prisma/client");
@@ -163,6 +163,32 @@ async function getItemInfo(req, res, next) {
     }
 }
 exports.getItemInfo = getItemInfo;
+async function getFilePreview(req, res, next) {
+    try {
+        if (!req.userId) {
+            throw new responses_1.ApiError(401, "Unauthorized request");
+        }
+        const { previewUrl } = req.params;
+        const file = await db_1.db.item.findFirst({
+            where: {
+                previewUrl,
+                sharedWith: { some: { userId: req.userId } },
+            },
+            select: {
+                id: true,
+                media: true,
+            },
+        });
+        if (!file) {
+            throw new responses_1.ApiError(404, "File not found");
+        }
+        (0, responses_1.ApiResponse)(res, 200, { file });
+    }
+    catch (error) {
+        next(error);
+    }
+}
+exports.getFilePreview = getFilePreview;
 async function getItems(req, res, next) {
     try {
         if (!req.userId) {
