@@ -191,6 +191,39 @@ export async function getItemInfo(
 	}
 }
 
+export async function getFilePreview(
+	req: Request,
+	res: Response,
+	next: NextFunction
+) {
+	try {
+		if (!req.userId) {
+			throw new ApiError(401, "Unauthorized request");
+		}
+
+		const { previewUrl } = req.params;
+
+		const file = await db.item.findFirst({
+			where: {
+				previewUrl,
+				sharedWith: { some: { userId: req.userId } },
+			},
+			select: {
+				id: true,
+				media: true,
+			},
+		});
+
+		if (!file) {
+			throw new ApiError(404, "File not found");
+		}
+
+		ApiResponse(res, 200, { file });
+	} catch (error) {
+		next(error);
+	}
+}
+
 export async function getItems(
 	req: Request,
 	res: Response,
