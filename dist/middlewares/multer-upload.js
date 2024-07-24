@@ -11,7 +11,7 @@ if (process.env.NODE_ENV === "development") {
     tempDirectory = path_1.default.join(__dirname, "../../tmp/");
 }
 else {
-    tempDirectory = "./tmp/";
+    tempDirectory = "/tmp/";
 }
 exports.storage = multer_1.default.diskStorage({
     destination: (_, __, callback) => {
