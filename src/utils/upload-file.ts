@@ -14,7 +14,7 @@ admin.initializeApp({
 
 export const bucket = admin.storage().bucket();
 
-export const upload = async (path: string, filename: string) => {
+export const uploadToBucket = async (path: string, filename: string): Promise<string> => {
 	const url = await bucket.upload(path, {
 		destination: "drive/" + filename,
 		public: true,

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { verifyJWT } from "../middlewares/verify-jwt";
 import {
-	createFile,
+	uploadFile,
 	createFolder,
 	deleteItem,
 	editItem,
@@ -27,7 +27,7 @@ router.get("/items/count", getItemsCount);
 router.get("/items/files-folders/*", getItems);
 router.get("/items/shared/*", getSharedItems);
 router.get("/items/:itemId", getItemInfo);
-router.post("/items/files/*", multer({ storage }).single("file"), createFile);
+router.post("/items/files/*", multer({ storage }).single("file"), uploadFile);
 router.post("/items/folders/*", createFolder);
 router.put("/items/:itemId", editItem);
 router.put("/items/:itemId/starred", manageStarredItems);

@@ -3,14 +3,14 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteItem = exports.restoreItem = exports.makeTrash = exports.shareItem = exports.manageStarredItems = exports.getSharedItems = exports.getItemsByQuery = exports.getItemsCount = exports.createFolder = exports.editItem = exports.getItems = exports.getFilePreview = exports.getItemInfo = exports.createFile = void 0;
+exports.deleteItem = exports.restoreItem = exports.makeTrash = exports.shareItem = exports.manageStarredItems = exports.getSharedItems = exports.getItemsByQuery = exports.getItemsCount = exports.createFolder = exports.editItem = exports.getItems = exports.getFilePreview = exports.getItemInfo = exports.uploadFile = void 0;
 const responses_1 = require("../utils/responses");
 const db_1 = require("../utils/db");
 const client_1 = require("@prisma/client");
 const crypto_1 = __importDefault(require("crypto"));
-const upload_1 = require("../utils/upload");
+const upload_file_1 = require("../utils/upload-file");
 const storage_1 = require("firebase-admin/storage");
-async function createFile(req, res, next) {
+async function uploadFile(req, res, next) {
     try {
         if (!req.userId) {
             throw new responses_1.ApiError(401, "Unauthorized request");
@@ -43,7 +43,7 @@ async function createFile(req, res, next) {
             }
             const updatedSize = existingFolder.size + size;
             const previewUrl = crypto_1.default.randomBytes(12).toString("hex");
-            const imageUrl = await (0, upload_1.upload)(req.file.path, req.file.filename);
+            const imageUrl = await (0, upload_file_1.uploadToBucket)(req.file.path, req.file.filename);
             await db_1.db.$transaction([
                 db_1.db.item.create({
                     data: {
@@ -88,10 +88,10 @@ async function createFile(req, res, next) {
                 currentParent =
                     currentParent.parent;
             }
-            return (0, responses_1.ApiResponse)(res, 201, { message: "File created" });
+            return (0, responses_1.ApiResponse)(res, 201, { message: "File Uploaded" });
         }
         const previewUrl = crypto_1.default.randomBytes(12).toString("hex");
-        const imageUrl = await (0, upload_1.upload)(req.file.path, req.file.filename);
+        const imageUrl = await (0, upload_file_1.uploadToBucket)(req.file.path, req.file.filename);
         const file = await db_1.db.item.create({
             data: {
                 name: req.file.filename,
@@ -117,13 +117,13 @@ async function createFile(req, res, next) {
                 items: { connect: { id: file.id } },
             },
         });
-        (0, responses_1.ApiResponse)(res, 201, { message: "File created" });
+        (0, responses_1.ApiResponse)(res, 201, { message: "File Uploaded" });
     }
     catch (error) {
         next(error);
     }
 }
-exports.createFile = createFile;
+exports.uploadFile = uploadFile;
 async function getItemInfo(req, res, next) {
     try {
         if (!req.userId) {
@@ -176,6 +176,7 @@ async function getFilePreview(req, res, next) {
             },
             select: {
                 id: true,
+                name: true,
                 media: true,
             },
         });
@@ -286,7 +287,7 @@ async function editItem(req, res, next) {
         }
         if (existingItem.name === name && existingItem.isPrivate === isPrivate) {
             /* prevent unnecessary updates but response is ok as the values are same */
-            return (0, responses_1.ApiResponse)(res, 200, { message: "Item updated" });
+            return (0, responses_1.ApiResponse)(res, 200, { message: "Item is updated" });
         }
         await db_1.db.item.update({
             where: { id: existingItem.id },
@@ -295,7 +296,7 @@ async function editItem(req, res, next) {
                 isPrivate,
             },
         });
-        (0, responses_1.ApiResponse)(res, 200, { message: "Item updated" });
+        (0, responses_1.ApiResponse)(res, 200, { message: "Item is updated" });
     }
     catch (error) {
         next(error);
@@ -356,7 +357,7 @@ async function createFolder(req, res, next) {
                     },
                 }),
             ]);
-            return (0, responses_1.ApiResponse)(res, 201, { message: "Folder created" });
+            return (0, responses_1.ApiResponse)(res, 201, { message: "Folder Created" });
         }
         const previewUrl = crypto_1.default.randomBytes(12).toString("hex");
         const folder = await db_1.db.item.create({
@@ -375,7 +376,7 @@ async function createFolder(req, res, next) {
                 items: { connect: { id: folder.id } },
             },
         });
-        (0, responses_1.ApiResponse)(res, 201, { message: "Folder created" });
+        (0, responses_1.ApiResponse)(res, 201, { message: "Folder Created" });
     }
     catch (error) {
         next(error);
@@ -430,103 +431,60 @@ async function getItemsByQuery(req, res, next) {
         if (!req.userId) {
             throw new responses_1.ApiError(401, "Unauthorized request");
         }
-        let items = [];
         const { type, mediaType, starred, shared, isPrivate, trashed } = req.query;
+        let whereClause = {};
         if (type === "true" && mediaType) {
-            items = await db_1.db.item.findMany({
-                where: {
-                    ownerId: req.userId,
-                    mediaType: mediaType === "PDF"
-                        ? client_1.MediaType.PDF
-                        : mediaType === "IMAGE"
-                            ? client_1.MediaType.IMAGE
-                            : mediaType === "VIDEO"
-                                ? client_1.MediaType.VIDEO
-                                : null,
-                    isFolder: false,
-                    isTrash: false,
-                },
-                include: {
-                    owner: {
-                        select: {
-                            email: true,
-                            name: true,
-                            image: true,
-                        },
-                    },
-                },
-            });
+            whereClause = {
+                ownerId: req.userId,
+                mediaType: mediaType === "PDF"
+                    ? client_1.MediaType.PDF
+                    : mediaType === "IMAGE"
+                        ? client_1.MediaType.IMAGE
+                        : mediaType === "VIDEO"
+                            ? client_1.MediaType.VIDEO
+                            : null,
+                isFolder: false,
+                isTrash: false,
+            };
         }
         if (starred === "true") {
-            items = await db_1.db.item.findMany({
-                where: {
-                    ownerId: req.userId,
-                    isStarred: true,
-                    isTrash: false,
-                },
-                include: {
-                    owner: {
-                        select: {
-                            email: true,
-                            name: true,
-                            image: true,
-                        },
-                    },
-                },
-            });
+            whereClause = {
+                ownerId: req.userId,
+                isStarred: true,
+                isTrash: false,
+            };
         }
         if (shared === "true") {
-            items = await db_1.db.item.findMany({
-                where: {
-                    sharedWith: { some: { userId: req.userId } },
-                    isPrivate: true,
-                    isTrash: false,
-                },
-                include: {
-                    owner: {
-                        select: {
-                            email: true,
-                            name: true,
-                            image: true,
-                        },
-                    },
-                },
-            });
+            whereClause = {
+                sharedWith: { some: { userId: req.userId } },
+                isPrivate: true,
+                isTrash: false,
+            };
         }
         if (isPrivate === "true") {
-            items = await db_1.db.item.findMany({
-                where: {
-                    ownerId: req.userId,
-                    isPrivate: true,
-                },
-                include: {
-                    owner: {
-                        select: {
-                            email: true,
-                            name: true,
-                            image: true,
-                        },
-                    },
-                },
-            });
+            whereClause = {
+                ownerId: req.userId,
+                isPrivate: true,
+            };
         }
         if (trashed === "true") {
-            items = await db_1.db.item.findMany({
-                where: {
-                    ownerId: req.userId,
-                    isTrash: true,
-                },
-                include: {
-                    owner: {
-                        select: {
-                            email: true,
-                            name: true,
-                            image: true,
-                        },
+            whereClause = {
+                ownerId: req.userId,
+                isTrash: true,
+            };
+        }
+        const items = await db_1.db.item.findMany({
+            where: whereClause,
+            include: {
+                owner: {
+                    select: {
+                        email: true,
+                        name: true,
+                        image: true,
                     },
                 },
-            });
-        }
+            },
+        });
         (0, responses_1.ApiResponse)(res, 200, { items });
     }
     catch (error) {
@@ -627,7 +585,7 @@ async function manageStarredItems(req, res, next) {
                     isStarred: true,
                 },
             });
-            return (0, responses_1.ApiResponse)(res, 200, { message: "File Starred" });
+            return (0, responses_1.ApiResponse)(res, 200, { message: "Item Starred" });
         }
         await db_1.db.item.update({
             where: {
@@ -637,7 +595,7 @@ async function manageStarredItems(req, res, next) {
                 isStarred: false,
             },
         });
-        (0, responses_1.ApiResponse)(res, 200, { message: "File Unstarred" });
+        (0, responses_1.ApiResponse)(res, 200, { message: "Item Unstarred" });
     }
     catch (error) {
         next(error);
@@ -701,7 +659,7 @@ async function shareItem(req, res, next) {
                 itemId: item.id,
             },
         });
-        (0, responses_1.ApiResponse)(res, 200, { message: "Item is unshared" });
+        (0, responses_1.ApiResponse)(res, 200, { message: "Permission removed" });
     }
     catch (error) {
         next(error);
@@ -809,13 +767,13 @@ async function deleteItem(req, res, next) {
             },
         });
         if (!item.isFolder) {
-            const storageRef = (0, storage_1.getStorage)().bucket(upload_1.bucket.name);
+            const storageRef = (0, storage_1.getStorage)().bucket(upload_file_1.bucket.name);
             const ref = storageRef.file("drive/" + item.name);
             await ref.delete();
         }
         items.length > 0 &&
             items.forEach(async (item) => {
-                const storageRef = (0, storage_1.getStorage)().bucket(upload_1.bucket.name);
+                const storageRef = (0, storage_1.getStorage)().bucket(upload_file_1.bucket.name);
                 const ref = storageRef.file("drive/" + item.name);
                 await ref.delete();
             });

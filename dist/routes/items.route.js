@@ -15,7 +15,7 @@ router.get("/items/count", items_controller_1.getItemsCount);
 router.get("/items/files-folders/*", items_controller_1.getItems);
 router.get("/items/shared/*", items_controller_1.getSharedItems);
 router.get("/items/:itemId", items_controller_1.getItemInfo);
-router.post("/items/files/*", (0, multer_1.default)({ storage: multer_upload_js_1.storage }).single("file"), items_controller_1.createFile);
+router.post("/items/files/*", (0, multer_1.default)({ storage: multer_upload_js_1.storage }).single("file"), items_controller_1.uploadFile);
 router.post("/items/folders/*", items_controller_1.createFolder);
 router.put("/items/:itemId", items_controller_1.editItem);
 router.put("/items/:itemId/starred", items_controller_1.manageStarredItems);

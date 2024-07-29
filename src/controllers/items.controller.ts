@@ -1,12 +1,12 @@
 import { Request, Response, NextFunction } from "express";
 import { ApiError, ApiResponse } from "../utils/responses";
 import { db } from "../utils/db";
-import { Item, MediaType } from "@prisma/client";
+import { Item, MediaType, Prisma } from "@prisma/client";
 import crypto from "crypto";
-import { bucket, upload } from "../utils/upload";
+import { bucket, uploadToBucket } from "../utils/upload-file";
 import { getStorage } from "firebase-admin/storage";
 
-export async function createFile(
+export async function uploadFile(
 	req: Request,
 	res: Response,
 	next: NextFunction
@@ -50,7 +50,10 @@ export async function createFile(
 
 			const updatedSize = existingFolder.size + size;
 			const previewUrl = crypto.randomBytes(12).toString("hex");
-			const imageUrl = await upload(req.file.path, req.file.filename);
+			const imageUrl = await uploadToBucket(
+				req.file.path,
+				req.file.filename
+			);
 
 			await db.$transaction([
 				db.item.create({
@@ -105,11 +108,11 @@ export async function createFile(
 					currentParent.parent as typeof existingFolder.parent;
 			}
 
-			return ApiResponse(res, 201, { message: "File created" });
+			return ApiResponse(res, 201, { message: "File Uploaded" });
 		}
 
 		const previewUrl = crypto.randomBytes(12).toString("hex");
-		const imageUrl = await upload(req.file.path, req.file.filename);
+		const imageUrl = await uploadToBucket(req.file.path, req.file.filename);
 
 		const file = await db.item.create({
 			data: {
@@ -138,7 +141,7 @@ export async function createFile(
 			},
 		});
 
-		ApiResponse(res, 201, { message: "File created" });
+		ApiResponse(res, 201, { message: "File Uploaded" });
 	} catch (error) {
 		next(error);
 	}
@@ -210,6 +213,7 @@ export async function getFilePreview(
 			},
 			select: {
 				id: true,
+				name: true,
 				media: true,
 			},
 		});
@@ -343,7 +347,7 @@ export async function editItem(
 
 		if (existingItem.name === name && existingItem.isPrivate === isPrivate) {
 			/* prevent unnecessary updates but response is ok as the values are same */
-			return ApiResponse(res, 200, { message: "Item updated" });
+			return ApiResponse(res, 200, { message: "Item is updated" });
 		}
 
 		await db.item.update({
@@ -354,7 +358,7 @@ export async function editItem(
 			},
 		});
 
-		ApiResponse(res, 200, { message: "Item updated" });
+		ApiResponse(res, 200, { message: "Item is updated" });
 	} catch (error) {
 		next(error);
 	}
@@ -429,7 +433,7 @@ export async function createFolder(
 				}),
 			]);
 
-			return ApiResponse(res, 201, { message: "Folder created" });
+			return ApiResponse(res, 201, { message: "Folder Created" });
 		}
 
 		const previewUrl = crypto.randomBytes(12).toString("hex");
@@ -452,7 +456,7 @@ export async function createFolder(
 			},
 		});
 
-		ApiResponse(res, 201, { message: "Folder created" });
+		ApiResponse(res, 201, { message: "Folder Created" });
 	} catch (error) {
 		next(error);
 	}
@@ -519,111 +523,69 @@ export async function getItemsByQuery(
 			throw new ApiError(401, "Unauthorized request");
 		}
 
-		let items: any = [];
-
 		const { type, mediaType, starred, shared, isPrivate, trashed } =
 			req.query;
 
+		let whereClause: Prisma.ItemWhereInput = {};
+
 		if (type === "true" && mediaType) {
-			items = await db.item.findMany({
-				where: {
-					ownerId: req.userId,
-					mediaType:
-						mediaType === "PDF"
-							? MediaType.PDF
-							: mediaType === "IMAGE"
-							? MediaType.IMAGE
-							: mediaType === "VIDEO"
-							? MediaType.VIDEO
-							: null,
-					isFolder: false,
-					isTrash: false,
-				},
-				include: {
-					owner: {
-						select: {
-							email: true,
-							name: true,
-							image: true,
-						},
-					},
-				},
-			});
+			whereClause = {
+				ownerId: req.userId,
+				mediaType:
+					mediaType === "PDF"
+						? MediaType.PDF
+						: mediaType === "IMAGE"
+						? MediaType.IMAGE
+						: mediaType === "VIDEO"
+						? MediaType.VIDEO
+						: null,
+				isFolder: false,
+				isTrash: false,
+			};
 		}
 
 		if (starred === "true") {
-			items = await db.item.findMany({
-				where: {
-					ownerId: req.userId,
-					isStarred: true,
-					isTrash: false,
-				},
-				include: {
-					owner: {
-						select: {
-							email: true,
-							name: true,
-							image: true,
-						},
-					},
-				},
-			});
+			whereClause = {
+				ownerId: req.userId,
+				isStarred: true,
+				isTrash: false,
+			};
 		}
 
 		if (shared === "true") {
-			items = await db.item.findMany({
-				where: {
-					sharedWith: { some: { userId: req.userId } },
-					isPrivate: true,
-					isTrash: false,
-				},
-				include: {
-					owner: {
-						select: {
-							email: true,
-							name: true,
-							image: true,
-						},
-					},
-				},
-			});
+			whereClause = {
+				sharedWith: { some: { userId: req.userId } },
+				isPrivate: true,
+				isTrash: false,
+			};
 		}
 
 		if (isPrivate === "true") {
-			items = await db.item.findMany({
-				where: {
-					ownerId: req.userId,
-					isPrivate: true,
-				},
-				include: {
-					owner: {
-						select: {
-							email: true,
-							name: true,
-							image: true,
-						},
-					},
-				},
-			});
+			whereClause = {
+				ownerId: req.userId,
+				isPrivate: true,
+			};
 		}
 
 		if (trashed === "true") {
-			items = await db.item.findMany({
-				where: {
-					ownerId: req.userId,
-					isTrash: true,
-				},
-				include: {
-					owner: {
-						select: {
-							email: true,
-							name: true,
-							image: true,
-						},
+			whereClause = {
+				ownerId: req.userId,
+				isTrash: true,
+			};
+		}
+
+		const items = await db.item.findMany({
+			where: whereClause,
+			include: {
+				owner: {
+					select: {
+						email: true,
+						name: true,
+						image: true,
 					},
 				},
-			});
-		}
+			},
+		});
 
 		ApiResponse(res, 200, { items });
 	} catch (error) {
@@ -745,7 +707,7 @@ export async function manageStarredItems(
 				},
 			});
 
-			return ApiResponse(res, 200, { message: "File Starred" });
+			return ApiResponse(res, 200, { message: "Item Starred" });
 		}
 
 		await db.item.update({
@@ -757,7 +719,7 @@ export async function manageStarredItems(
 			},
 		});
 
-		ApiResponse(res, 200, { message: "File Unstarred" });
+		ApiResponse(res, 200, { message: "Item Unstarred" });
 	} catch (error) {
 		next(error);
 	}
@@ -836,7 +798,7 @@ export async function shareItem(
 			},
 		});
 
-		ApiResponse(res, 200, { message: "Item is unshared" });
+		ApiResponse(res, 200, { message: "Permission removed" });
 	} catch (error) {
 		next(error);
 	}
