@@ -786,12 +786,12 @@ async function deleteItem(req, res, next) {
                     where: { id: item.id },
                 }),
             ]);
-            return (0, responses_1.ApiResponse)(res, 200, { message: "File is deleted" });
+            return (0, responses_1.ApiResponse)(res, 200, { message: "Item is deleted" });
         }
         await db_1.db.item.delete({
             where: { id: item.id },
         });
-        (0, responses_1.ApiResponse)(res, 200, { message: "File is deleted" });
+        (0, responses_1.ApiResponse)(res, 200, { message: "Item is deleted" });
     }
     catch (error) {
         next(error);

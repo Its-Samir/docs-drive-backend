@@ -958,14 +958,14 @@ export async function deleteItem(
 				}),
 			]);
 
-			return ApiResponse(res, 200, { message: "File is deleted" });
+			return ApiResponse(res, 200, { message: "Item is deleted" });
 		}
 
 		await db.item.delete({
 			where: { id: item.id },
 		});
 
-		ApiResponse(res, 200, { message: "File is deleted" });
+		ApiResponse(res, 200, { message: "Item is deleted" });
 	} catch (error) {
 		next(error);
 	}
