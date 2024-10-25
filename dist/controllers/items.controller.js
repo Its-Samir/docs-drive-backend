@@ -745,7 +745,8 @@ async function deleteItem(req, res, next) {
                 id: true,
                 isFolder: true,
                 name: true,
-                media: true,
+                size: true,
+                parent: true,
                 _count: {
                     select: {
                         childrens: true,
@@ -756,37 +757,58 @@ async function deleteItem(req, res, next) {
         if (!item) {
             throw new responses_1.ApiError(404, "Item not found");
         }
-        const items = await db_1.db.item.findMany({
-            where: {
-                parentId: item.id,
-                isFolder: false,
-            },
-            select: {
-                name: true,
-                media: true,
-            },
-        });
         if (!item.isFolder) {
             const storageRef = (0, storage_1.getStorage)().bucket(upload_file_1.bucket.name);
             const ref = storageRef.file("drive/" + item.name);
             await ref.delete();
-        }
-        items.length > 0 &&
-            items.forEach(async (item) => {
-                const storageRef = (0, storage_1.getStorage)().bucket(upload_file_1.bucket.name);
-                const ref = storageRef.file("drive/" + item.name);
-                await ref.delete();
+            const parent = await db_1.db.item.findFirst({
+                where: {
+                    childrens: { some: { id: item.id } },
+                },
+                select: {
+                    id: true,
+                    size: true,
+                    parent: {
+                        select: { id: true, parent: true },
+                    },
+                },
             });
-        if (item.isFolder && item._count.childrens > 0) {
-            await db_1.db.$transaction([
-                db_1.db.item.deleteMany({
-                    where: { parentId: item.id },
-                }),
-                db_1.db.item.delete({
-                    where: { id: item.id },
-                }),
-            ]);
-            return (0, responses_1.ApiResponse)(res, 200, { message: "Item is deleted" });
+            let currentParent = parent;
+            while (currentParent) {
+                await db_1.db.item.update({
+                    where: { id: currentParent.id },
+                    data: { size: currentParent.size - item.size },
+                });
+                currentParent = currentParent.parent;
+            }
+        }
+        else {
+            const items = await db_1.db.item.findMany({
+                where: {
+                    parentId: item.id,
+                    isFolder: false,
+                },
+                select: {
+                    name: true,
+                },
+            });
+            items.length > 0 &&
+                items.forEach(async (item) => {
+                    const storageRef = (0, storage_1.getStorage)().bucket(upload_file_1.bucket.name);
+                    const ref = storageRef.file("drive/" + item.name);
+                    await ref.delete();
+                });
+            if (item.isFolder && item._count.childrens > 0) {
+                await db_1.db.$transaction([
+                    db_1.db.item.deleteMany({
+                        where: { parentId: item.id },
+                    }),
+                    db_1.db.item.delete({
+                        where: { id: item.id },
+                    }),
+                ]);
+                return (0, responses_1.ApiResponse)(res, 200, { message: "Item is deleted" });
+            }
         }
         await db_1.db.item.delete({
             where: { id: item.id },

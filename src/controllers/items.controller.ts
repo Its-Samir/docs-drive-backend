@@ -907,8 +907,9 @@ export async function deleteItem(
 			select: {
 				id: true,
 				isFolder: true,
-				name: true,
-				media: true,
+				name: true,				
+				size: true,
+				parent: true,
 				_count: {
 					select: {
 						childrens: true,
@@ -921,44 +922,67 @@ export async function deleteItem(
 			throw new ApiError(404, "Item not found");
 		}
 
-		const items = await db.item.findMany({
-			where: {
-				parentId: item.id,
-				isFolder: false,
-			},
-			select: {
-				name: true,
-				media: true,
-			},
-		});
-
 		if (!item.isFolder) {
 			const storageRef = getStorage().bucket(bucket.name);
 			const ref = storageRef.file("drive/" + item.name);
 
 			await ref.delete();
-		}
 
-		items.length > 0 &&
-			items.forEach(async (item) => {
-				const storageRef = getStorage().bucket(bucket.name);
-				const ref = storageRef.file("drive/" + item.name);
-
-				await ref.delete();
+			const parent = await db.item.findFirst({
+				where: {
+					childrens: {some: {id: item.id}},
+				},
+				select: {
+					id: true,
+					size: true,
+					parent: {
+						select: { id: true, parent: true },
+					},
+				},
 			});
 
-		if (item.isFolder && item._count.childrens > 0) {
-			await db.$transaction([
-				db.item.deleteMany({
-					where: { parentId: item.id },
-				}),
+			let currentParent = parent;
 
-				db.item.delete({
-					where: { id: item.id },
-				}),
-			]);
+			while (currentParent) {
+				await db.item.update({
+					where: { id: currentParent.id },
+					data: { size: currentParent.size - item.size },
+				});
 
-			return ApiResponse(res, 200, { message: "Item is deleted" });
+				currentParent = currentParent.parent as typeof parent;
+			}
+		} else {
+			const items = await db.item.findMany({
+				where: {
+					parentId: item.id,
+					isFolder: false,
+				},
+				select: {
+					name: true,					
+				},
+			});
+
+			items.length > 0 &&
+				items.forEach(async (item) => {
+					const storageRef = getStorage().bucket(bucket.name);
+					const ref = storageRef.file("drive/" + item.name);
+
+					await ref.delete();
+				});
+
+			if (item.isFolder && item._count.childrens > 0) {
+				await db.$transaction([
+					db.item.deleteMany({
+						where: { parentId: item.id },
+					}),
+
+					db.item.delete({
+						where: { id: item.id },
+					}),
+				]);
+
+				return ApiResponse(res, 200, { message: "Item is deleted" });
+			}
 		}
 
 		await db.item.delete({
